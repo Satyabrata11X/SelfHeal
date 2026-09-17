@@ -2,6 +2,9 @@ package com.selfheal.starter.monitoring;
 
 import com.selfheal.starter.core.HealthCheck;
 import com.selfheal.starter.core.HealthStatus;
+import com.selfheal.starter.event.SelfHealEvent;
+import com.selfheal.starter.event.SelfHealEventPublisher;
+import com.selfheal.starter.event.SelfHealEventType;
 import com.selfheal.starter.recovery.SelfHealRecoveryEngine;
 
 import java.util.concurrent.Executors;
@@ -12,16 +15,19 @@ public class SelfHealMonitor {
 
     private final HealthCheck healthCheck;
     private final SelfHealRecoveryEngine recoveryEngine;
+    private final SelfHealEventPublisher eventPublisher;
 
     private final ScheduledExecutorService scheduler =
             Executors.newSingleThreadScheduledExecutor();
 
     public SelfHealMonitor(
             HealthCheck healthCheck,
-            SelfHealRecoveryEngine recoveryEngine) {
+            SelfHealRecoveryEngine recoveryEngine,
+            SelfHealEventPublisher eventPublisher) {
 
         this.healthCheck = healthCheck;
         this.recoveryEngine = recoveryEngine;
+        this.eventPublisher = eventPublisher;
     }
 
     public void start() {
@@ -47,9 +53,12 @@ public class SelfHealMonitor {
 
         if (status == HealthStatus.DOWN) {
 
-            System.out.println(
-                    "[SELFHEAL] Failure detected in "
-                            + healthCheck.getName()
+            eventPublisher.publish(
+                    new SelfHealEvent(
+                            SelfHealEventType.FAILURE_DETECTED,
+                            healthCheck.getName(),
+                            "Health check reported DOWN"
+                    )
             );
 
             recoveryEngine.recover(healthCheck);

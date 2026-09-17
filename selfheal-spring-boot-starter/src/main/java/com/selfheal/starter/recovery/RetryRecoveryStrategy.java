@@ -2,18 +2,27 @@ package com.selfheal.starter.recovery;
 
 import com.selfheal.starter.core.HealthCheck;
 import com.selfheal.starter.core.HealthStatus;
+import com.selfheal.starter.event.SelfHealEvent;
+import com.selfheal.starter.event.SelfHealEventPublisher;
+import com.selfheal.starter.event.SelfHealEventType;
 
 public class RetryRecoveryStrategy implements RecoveryStrategy {
 
     private final int maxAttempts;
+    private final long delay;
     private final RecoveryAction recoveryAction;
+    private final SelfHealEventPublisher eventPublisher;
 
     public RetryRecoveryStrategy(
             int maxAttempts,
-            RecoveryAction recoveryAction) {
+            long delay,
+            RecoveryAction recoveryAction,
+            SelfHealEventPublisher eventPublisher) {
 
         this.maxAttempts = maxAttempts;
+        this.delay = delay;
         this.recoveryAction = recoveryAction;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -24,7 +33,20 @@ public class RetryRecoveryStrategy implements RecoveryStrategy {
     @Override
     public boolean recover(HealthCheck healthCheck) {
 
+        String componentName = healthCheck.getName();
+
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+
+            eventPublisher.publish(
+                    new SelfHealEvent(
+                            SelfHealEventType.RECOVERY_ATTEMPT,
+                            componentName,
+                            "Recovery attempt "
+                                    + attempt
+                                    + "/"
+                                    + maxAttempts
+                    )
+            );
 
             System.out.println(
                     "[SELFHEAL] Recovery attempt "
@@ -36,29 +58,27 @@ public class RetryRecoveryStrategy implements RecoveryStrategy {
             boolean actionSuccessful =
                     recoveryAction.execute(healthCheck);
 
-            if (!actionSuccessful) {
+            if (actionSuccessful) {
 
-                System.out.println(
-                        "[SELFHEAL] Recovery action failed."
-                );
+                HealthStatus status = healthCheck.check();
 
-                continue;
-            }
+                if (status == HealthStatus.UP) {
 
-            HealthStatus status = healthCheck.check();
+                    System.out.println(
+                            "[SELFHEAL] Recovery successful."
+                    );
 
-            if (status == HealthStatus.UP) {
-
-                System.out.println(
-                        "[SELFHEAL] Recovery successful."
-                );
-
-                return true;
+                    return true;
+                }
             }
 
             System.out.println(
-                    "[SELFHEAL] Component still DOWN."
+                    "[SELFHEAL] Recovery attempt failed."
             );
+
+            if (attempt < maxAttempts) {
+                sleep();
+            }
         }
 
         System.out.println(
@@ -68,5 +88,21 @@ public class RetryRecoveryStrategy implements RecoveryStrategy {
         );
 
         return false;
+    }
+
+    private void sleep() {
+
+        try {
+
+            Thread.sleep(delay);
+
+        } catch (InterruptedException e) {
+
+            Thread.currentThread().interrupt();
+
+            System.out.println(
+                    "[SELFHEAL] Recovery interrupted."
+            );
+        }
     }
 }

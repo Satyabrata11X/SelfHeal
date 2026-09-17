@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: selfheal-demo-app
+
+selfheal:
+  enabled: true
+
+  recovery:
+    max-attempts: 3
+    delay: 1000
