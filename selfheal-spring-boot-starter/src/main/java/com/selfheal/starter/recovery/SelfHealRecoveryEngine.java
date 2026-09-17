@@ -1,18 +1,41 @@
 package com.selfheal.starter.recovery;
 
-import com.selfheal.starter.core.SelfHealComponent;
+import com.selfheal.starter.core.HealthCheck;
 
 public class SelfHealRecoveryEngine {
 
-    public void recover(SelfHealComponent component) {
+    private final RecoveryStrategy recoveryStrategy;
 
-        System.out.println("[SELFHEAL] Failure detected.");
-        System.out.println("[SELFHEAL] Starting recovery...");
+    public SelfHealRecoveryEngine(RecoveryStrategy recoveryStrategy) {
+        this.recoveryStrategy = recoveryStrategy;
+    }
 
-        component.recover();
+    public void recover(HealthCheck healthCheck) {
 
-        System.out.println("[SELFHEAL] Recovery completed.");
-        System.out.println("[SELFHEAL] Component is healthy: "
-                + component.isHealthy());
+        System.out.println(
+                "[SELFHEAL] Recovery requested for: "
+                        + healthCheck.getName()
+        );
+
+        System.out.println(
+                "[SELFHEAL] Strategy: "
+                        + recoveryStrategy.getName()
+        );
+
+        boolean recovered =
+                recoveryStrategy.recover(healthCheck);
+
+        if (recovered) {
+
+            System.out.println(
+                    "[SELFHEAL] Component recovered successfully."
+            );
+
+        } else {
+
+            System.out.println(
+                    "[SELFHEAL] Component could not be recovered."
+            );
+        }
     }
 }

@@ -2,12 +2,21 @@ package com.selfheal.starter.core;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class SelfHealComponent {
+public class SelfHealComponent implements HealthCheck {
 
     private final AtomicBoolean healthy = new AtomicBoolean(true);
 
-    public boolean isHealthy() {
-        return healthy.get();
+    @Override
+    public String getName() {
+        return "selfheal-demo-component";
+    }
+
+    @Override
+    public HealthStatus check() {
+
+        return healthy.get()
+                ? HealthStatus.UP
+                : HealthStatus.DOWN;
     }
 
     public void fail() {
@@ -16,5 +25,9 @@ public class SelfHealComponent {
 
     public void recover() {
         healthy.set(true);
+    }
+
+    public boolean isHealthy() {
+        return healthy.get();
     }
 }

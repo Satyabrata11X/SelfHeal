@@ -1,6 +1,7 @@
 package com.selfheal.starter.monitoring;
 
-import com.selfheal.starter.core.SelfHealComponent;
+import com.selfheal.starter.core.HealthCheck;
+import com.selfheal.starter.core.HealthStatus;
 import com.selfheal.starter.recovery.SelfHealRecoveryEngine;
 
 import java.util.concurrent.Executors;
@@ -9,17 +10,17 @@ import java.util.concurrent.TimeUnit;
 
 public class SelfHealMonitor {
 
-    private final SelfHealComponent component;
+    private final HealthCheck healthCheck;
     private final SelfHealRecoveryEngine recoveryEngine;
 
     private final ScheduledExecutorService scheduler =
             Executors.newSingleThreadScheduledExecutor();
 
     public SelfHealMonitor(
-            SelfHealComponent component,
+            HealthCheck healthCheck,
             SelfHealRecoveryEngine recoveryEngine) {
 
-        this.component = component;
+        this.healthCheck = healthCheck;
         this.recoveryEngine = recoveryEngine;
     }
 
@@ -35,15 +36,23 @@ public class SelfHealMonitor {
 
     private void checkHealth() {
 
+        HealthStatus status = healthCheck.check();
+
         System.out.println(
-                "[SELFHEAL] Health check -> "
-                        + (component.isHealthy()
-                        ? "HEALTHY"
-                        : "FAILED")
+                "[SELFHEAL] "
+                        + healthCheck.getName()
+                        + " -> "
+                        + status
         );
 
-        if (!component.isHealthy()) {
-            recoveryEngine.recover(component);
+        if (status == HealthStatus.DOWN) {
+
+            System.out.println(
+                    "[SELFHEAL] Failure detected in "
+                            + healthCheck.getName()
+            );
+
+            recoveryEngine.recover(healthCheck);
         }
     }
 }
