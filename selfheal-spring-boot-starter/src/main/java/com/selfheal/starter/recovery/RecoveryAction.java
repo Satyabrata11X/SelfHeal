@@ -6,5 +6,8 @@ public interface RecoveryAction {
 
     String getName();
 
-    boolean execute(HealthCheck healthCheck);
+    boolean execute(
+            HealthCheck healthCheck,
+            RecoveryContext context
+    );
 }

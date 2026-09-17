@@ -6,5 +6,8 @@ public interface RecoveryStrategy {
 
     String getName();
 
-    boolean recover(HealthCheck healthCheck);
+    boolean recover(
+            HealthCheck healthCheck,
+            RecoveryContext context
+    );
 }

@@ -18,15 +18,20 @@ public class SelfHealRecoveryEngine {
         this.eventPublisher = eventPublisher;
     }
 
-    public void recover(HealthCheck healthCheck) {
+    public void recover(
+            HealthCheck healthCheck,
+            RecoveryContext context) {
 
-        String componentName = healthCheck.getName();
+        String componentName =
+                healthCheck.getName();
 
         eventPublisher.publish(
                 new SelfHealEvent(
                         SelfHealEventType.RECOVERY_STARTED,
                         componentName,
                         "Recovery process started"
+                                + " | failureType="
+                                + context.getFailureType()
                 )
         );
 
@@ -36,12 +41,20 @@ public class SelfHealRecoveryEngine {
         );
 
         System.out.println(
+                "[SELFHEAL] Failure type: "
+                        + context.getFailureType()
+        );
+
+        System.out.println(
                 "[SELFHEAL] Strategy: "
                         + recoveryStrategy.getName()
         );
 
         boolean recovered =
-                recoveryStrategy.recover(healthCheck);
+                recoveryStrategy.recover(
+                        healthCheck,
+                        context
+                );
 
         if (recovered) {
 

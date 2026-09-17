@@ -5,6 +5,11 @@ spring:
 selfheal:
   enabled: true
 
+  monitoring:
+    interval: 5000
+    latency-threshold: 1000
+
   recovery:
+    strategy: retry
     max-attempts: 3
     delay: 1000

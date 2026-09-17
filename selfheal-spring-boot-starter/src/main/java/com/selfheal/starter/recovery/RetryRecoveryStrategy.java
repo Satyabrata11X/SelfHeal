@@ -1,7 +1,7 @@
 package com.selfheal.starter.recovery;
 
 import com.selfheal.starter.core.HealthCheck;
-import com.selfheal.starter.core.HealthStatus;
+import com.selfheal.starter.core.HealthCheckResult;
 import com.selfheal.starter.event.SelfHealEvent;
 import com.selfheal.starter.event.SelfHealEventPublisher;
 import com.selfheal.starter.event.SelfHealEventType;
@@ -31,11 +31,15 @@ public class RetryRecoveryStrategy implements RecoveryStrategy {
     }
 
     @Override
-    public boolean recover(HealthCheck healthCheck) {
+    public boolean recover(
+            HealthCheck healthCheck,
+            RecoveryContext context) {
 
         String componentName = healthCheck.getName();
 
-        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+        for (int attempt = 1;
+             attempt <= maxAttempts;
+             attempt++) {
 
             eventPublisher.publish(
                     new SelfHealEvent(
@@ -45,6 +49,8 @@ public class RetryRecoveryStrategy implements RecoveryStrategy {
                                     + attempt
                                     + "/"
                                     + maxAttempts
+                                    + " | failureType="
+                                    + context.getFailureType()
                     )
             );
 
@@ -56,13 +62,17 @@ public class RetryRecoveryStrategy implements RecoveryStrategy {
             );
 
             boolean actionSuccessful =
-                    recoveryAction.execute(healthCheck);
+                    recoveryAction.execute(
+                            healthCheck,
+                            context
+                    );
 
             if (actionSuccessful) {
 
-                HealthStatus status = healthCheck.check();
+                HealthCheckResult result =
+                        healthCheck.check();
 
-                if (status == HealthStatus.UP) {
+                if (result.isHealthy()) {
 
                     System.out.println(
                             "[SELFHEAL] Recovery successful."
@@ -93,7 +103,6 @@ public class RetryRecoveryStrategy implements RecoveryStrategy {
     private void sleep() {
 
         try {
-
             Thread.sleep(delay);
 
         } catch (InterruptedException e) {

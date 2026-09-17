@@ -9,6 +9,8 @@ public class SelfHealProperties {
 
     private Recovery recovery = new Recovery();
 
+    private Monitoring monitoring = new Monitoring();
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -24,6 +26,18 @@ public class SelfHealProperties {
     public void setRecovery(Recovery recovery) {
         this.recovery = recovery;
     }
+
+    public Monitoring getMonitoring() {
+        return monitoring;
+    }
+
+    public void setMonitoring(Monitoring monitoring) {
+        this.monitoring = monitoring;
+    }
+
+    // --------------------------------------------------
+    // Recovery Configuration
+    // --------------------------------------------------
 
     public static class Recovery {
 
@@ -55,6 +69,35 @@ public class SelfHealProperties {
 
         public void setStrategy(String strategy) {
             this.strategy = strategy;
+        }
+    }
+
+    // --------------------------------------------------
+    // Monitoring Configuration
+    // --------------------------------------------------
+
+    public static class Monitoring {
+
+        private long interval = 5000;
+
+        private long latencyThreshold = 1000;
+
+        public long getInterval() {
+            return interval;
+        }
+
+        public void setInterval(long interval) {
+            this.interval = interval;
+        }
+
+        public long getLatencyThreshold() {
+            return latencyThreshold;
+        }
+
+        public void setLatencyThreshold(
+                long latencyThreshold) {
+
+            this.latencyThreshold = latencyThreshold;
         }
     }
 }

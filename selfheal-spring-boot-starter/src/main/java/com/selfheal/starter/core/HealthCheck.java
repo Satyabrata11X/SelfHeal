@@ -4,5 +4,5 @@ public interface HealthCheck {
 
     String getName();
 
-    HealthStatus check();
+    HealthCheckResult check();
 }
