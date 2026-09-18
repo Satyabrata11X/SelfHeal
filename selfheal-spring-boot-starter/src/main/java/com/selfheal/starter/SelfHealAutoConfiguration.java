@@ -4,8 +4,10 @@ import com.selfheal.starter.config.SelfHealProperties;
 import com.selfheal.starter.core.SelfHealComponent;
 import com.selfheal.starter.event.SelfHealEventPublisher;
 import com.selfheal.starter.failure.FailureClassifier;
+import com.selfheal.starter.history.RecoveryHistory;
 import com.selfheal.starter.monitoring.SelfHealMonitor;
 import com.selfheal.starter.recovery.RecoveryAction;
+import com.selfheal.starter.recovery.RecoveryCooldown;
 import com.selfheal.starter.recovery.RecoveryPolicy;
 import com.selfheal.starter.recovery.RecoveryStrategy;
 import com.selfheal.starter.recovery.RecoveryStrategyFactory;
@@ -21,45 +23,53 @@ import org.springframework.context.annotation.Bean;
 @EnableConfigurationProperties(SelfHealProperties.class)
 public class SelfHealAutoConfiguration {
 
-    // --------------------------------------------------
-    // SelfHeal Component
-    // --------------------------------------------------
+    // =========================================================
+    // SELFHEAL COMPONENT
+    // =========================================================
 
     @Bean
     public SelfHealComponent selfHealComponent() {
+
         return new SelfHealComponent();
     }
 
-    // --------------------------------------------------
-    // Event Publisher
-    // --------------------------------------------------
+
+    // =========================================================
+    // EVENT PUBLISHER
+    // =========================================================
 
     @Bean
     public SelfHealEventPublisher selfHealEventPublisher() {
+
         return new SelfHealEventPublisher();
     }
 
-    // --------------------------------------------------
-    // Failure Classifier
-    // --------------------------------------------------
+
+    // =========================================================
+    // FAILURE CLASSIFIER
+    // =========================================================
 
     @Bean
     public FailureClassifier failureClassifier() {
+
         return new FailureClassifier();
     }
 
-    // --------------------------------------------------
-    // Recovery Action
-    // --------------------------------------------------
+
+    // =========================================================
+    // RECOVERY ACTION
+    // =========================================================
 
     @Bean
     public RecoveryAction recoveryAction() {
+
         return new SelfHealComponentRecoveryAction();
     }
 
-    // --------------------------------------------------
-    // Recovery Policy
-    // --------------------------------------------------
+
+    // =========================================================
+    // RECOVERY POLICY
+    // =========================================================
 
     @Bean
     public RecoveryPolicy recoveryPolicy(
@@ -68,13 +78,17 @@ public class SelfHealAutoConfiguration {
         return new RecoveryPolicy(
                 properties.getRecovery().getStrategy(),
                 properties.getRecovery().getMaxAttempts(),
-                properties.getRecovery().getDelay()
+                properties.getRecovery().getDelay(),
+                properties.getRecovery().getBackoffMultiplier(),
+                properties.getRecovery().getMaxDelay(),
+                properties.getRecovery().getCooldown()
         );
     }
 
-    // --------------------------------------------------
-    // Recovery Strategy Factory
-    // --------------------------------------------------
+
+    // =========================================================
+    // RECOVERY STRATEGY FACTORY
+    // =========================================================
 
     @Bean
     public RecoveryStrategyFactory recoveryStrategyFactory(
@@ -87,9 +101,10 @@ public class SelfHealAutoConfiguration {
         );
     }
 
-    // --------------------------------------------------
-    // Recovery Strategy
-    // --------------------------------------------------
+
+    // =========================================================
+    // RECOVERY STRATEGY
+    // =========================================================
 
     @Bean
     public RecoveryStrategy recoveryStrategy(
@@ -104,14 +119,26 @@ public class SelfHealAutoConfiguration {
                         + recoveryPolicy.getMaxAttempts()
                         + ", delay="
                         + recoveryPolicy.getDelay()
+                        + "ms"
+                        + ", backoffMultiplier="
+                        + recoveryPolicy.getBackoffMultiplier()
+                        + ", maxDelay="
+                        + recoveryPolicy.getMaxDelay()
+                        + "ms"
+                        + ", cooldown="
+                        + recoveryPolicy.getCooldown()
+                        + "ms"
         );
 
-        return strategyFactory.create(recoveryPolicy);
+        return strategyFactory.create(
+                recoveryPolicy
+        );
     }
 
-    // --------------------------------------------------
-    // Recovery Engine
-    // --------------------------------------------------
+
+    // =========================================================
+    // RECOVERY ENGINE
+    // =========================================================
 
     @Bean
     public SelfHealRecoveryEngine selfHealRecoveryEngine(
@@ -124,9 +151,35 @@ public class SelfHealAutoConfiguration {
         );
     }
 
-    // --------------------------------------------------
-    // SelfHeal Monitor
-    // --------------------------------------------------
+
+    // =========================================================
+    // RECOVERY COOLDOWN
+    // =========================================================
+
+    @Bean
+    public RecoveryCooldown recoveryCooldown(
+            SelfHealProperties properties) {
+
+        return new RecoveryCooldown(
+                properties.getRecovery().getCooldown()
+        );
+    }
+
+
+    // =========================================================
+    // RECOVERY HISTORY
+    // =========================================================
+
+    @Bean
+    public RecoveryHistory recoveryHistory() {
+
+        return new RecoveryHistory();
+    }
+
+
+    // =========================================================
+    // SELFHEAL MONITOR
+    // =========================================================
 
     @Bean
     @ConditionalOnProperty(
@@ -140,7 +193,9 @@ public class SelfHealAutoConfiguration {
             SelfHealRecoveryEngine recoveryEngine,
             SelfHealEventPublisher eventPublisher,
             FailureClassifier failureClassifier,
-            SelfHealProperties properties) {
+            SelfHealProperties properties,
+            RecoveryCooldown recoveryCooldown,
+            RecoveryHistory recoveryHistory) {
 
         SelfHealMonitor monitor =
                 new SelfHealMonitor(
@@ -148,7 +203,9 @@ public class SelfHealAutoConfiguration {
                         recoveryEngine,
                         eventPublisher,
                         failureClassifier,
-                        properties
+                        properties,
+                        recoveryCooldown,
+                        recoveryHistory
                 );
 
         monitor.start();
@@ -156,12 +213,14 @@ public class SelfHealAutoConfiguration {
         return monitor;
     }
 
-    // --------------------------------------------------
-    // Initializer
-    // --------------------------------------------------
+
+    // =========================================================
+    // INITIALIZER
+    // =========================================================
 
     @Bean
     public SelfHealInitializer selfHealInitializer() {
+
         return new SelfHealInitializer();
     }
 }

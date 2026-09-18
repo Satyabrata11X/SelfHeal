@@ -9,45 +9,103 @@ import com.selfheal.starter.event.SelfHealEventType;
 import com.selfheal.starter.failure.FailureClassifier;
 import com.selfheal.starter.failure.FailureInfo;
 import com.selfheal.starter.failure.FailureType;
+import com.selfheal.starter.history.RecoveryHistory;
+import com.selfheal.starter.history.RecoveryRecord;
 import com.selfheal.starter.recovery.RecoveryContext;
+import com.selfheal.starter.recovery.RecoveryCooldown;
+import com.selfheal.starter.recovery.RecoveryResult;
+import com.selfheal.starter.recovery.RecoveryState;
 import com.selfheal.starter.recovery.SelfHealRecoveryEngine;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class SelfHealMonitor {
 
+    // =========================================================
+    // DEPENDENCIES
+    // =========================================================
+
     private final HealthCheck healthCheck;
+
     private final SelfHealRecoveryEngine recoveryEngine;
+
     private final SelfHealEventPublisher eventPublisher;
+
     private final FailureClassifier failureClassifier;
 
+    private final RecoveryCooldown recoveryCooldown;
+
+    private final RecoveryHistory recoveryHistory;
+
+
+    // =========================================================
+    // MONITORING CONFIGURATION
+    // =========================================================
+
     private final long interval;
+
     private final long latencyThreshold;
+
+
+    // =========================================================
+    // RECOVERY STATE
+    // =========================================================
+
+    private final AtomicReference<RecoveryState> recoveryState =
+            new AtomicReference<>(
+                    RecoveryState.HEALTHY
+            );
+
+
+    // =========================================================
+    // SCHEDULER
+    // =========================================================
 
     private final ScheduledExecutorService scheduler =
             Executors.newSingleThreadScheduledExecutor();
+
+
+    // =========================================================
+    // CONSTRUCTOR
+    // =========================================================
 
     public SelfHealMonitor(
             HealthCheck healthCheck,
             SelfHealRecoveryEngine recoveryEngine,
             SelfHealEventPublisher eventPublisher,
             FailureClassifier failureClassifier,
-            SelfHealProperties properties) {
+            SelfHealProperties properties,
+            RecoveryCooldown recoveryCooldown,
+            RecoveryHistory recoveryHistory) {
 
         this.healthCheck = healthCheck;
+
         this.recoveryEngine = recoveryEngine;
+
         this.eventPublisher = eventPublisher;
+
         this.failureClassifier = failureClassifier;
 
+        this.recoveryCooldown = recoveryCooldown;
+
+        this.recoveryHistory = recoveryHistory;
+
         this.interval =
-                properties.getMonitoring().getInterval();
+                properties.getMonitoring()
+                        .getInterval();
 
         this.latencyThreshold =
                 properties.getMonitoring()
                         .getLatencyThreshold();
     }
+
+
+    // =========================================================
+    // START MONITOR
+    // =========================================================
 
     public void start() {
 
@@ -59,6 +117,9 @@ public class SelfHealMonitor {
                         + ", latencyThreshold="
                         + latencyThreshold
                         + "ms"
+                        + ", cooldown="
+                        + recoveryCooldown.getCooldownMillis()
+                        + "ms"
         );
 
         scheduler.scheduleAtFixedRate(
@@ -69,16 +130,22 @@ public class SelfHealMonitor {
         );
     }
 
+
+    // =========================================================
+    // HEALTH CHECK
+    // =========================================================
+
     private void checkHealth() {
 
         try {
 
-            // ------------------------------------------
-            // Perform health check
-            // ------------------------------------------
+            // -------------------------------------------------
+            // PERFORM HEALTH CHECK
+            // -------------------------------------------------
 
             HealthCheckResult result =
                     healthCheck.check();
+
 
             System.out.println(
                     "[SELFHEAL] "
@@ -90,9 +157,10 @@ public class SelfHealMonitor {
                             + "ms"
             );
 
-            // ------------------------------------------
-            // Component Failure Detection
-            // ------------------------------------------
+
+            // -------------------------------------------------
+            // COMPONENT FAILURE
+            // -------------------------------------------------
 
             if (!result.isHealthy()) {
 
@@ -110,9 +178,10 @@ public class SelfHealMonitor {
                 return;
             }
 
-            // ------------------------------------------
-            // High Latency Detection
-            // ------------------------------------------
+
+            // -------------------------------------------------
+            // HIGH LATENCY
+            // -------------------------------------------------
 
             if (result.getResponseTime()
                     > latencyThreshold) {
@@ -136,9 +205,9 @@ public class SelfHealMonitor {
 
         } catch (Exception exception) {
 
-            // ------------------------------------------
-            // Exception-based Failure Detection
-            // ------------------------------------------
+            // -------------------------------------------------
+            // EXCEPTION-BASED FAILURE
+            // -------------------------------------------------
 
             FailureInfo failure =
                     failureClassifier.classify(
@@ -153,13 +222,71 @@ public class SelfHealMonitor {
         }
     }
 
+
+    // =========================================================
+    // FAILURE HANDLING
+    // =========================================================
+
     private void handleFailure(
             FailureInfo failure,
             HealthCheckResult healthCheckResult) {
 
-        // ------------------------------------------
-        // Log Failure Classification
-        // ------------------------------------------
+
+        // -----------------------------------------------------
+        // COOLDOWN CHECK
+        // -----------------------------------------------------
+
+        if (recoveryCooldown.isInCooldown()) {
+
+            long remainingCooldown =
+                    recoveryCooldown
+                            .getRemainingCooldown();
+
+            System.out.println(
+                    "[SELFHEAL] Recovery skipped."
+                            + " Cooldown active."
+                            + " Remaining="
+                            + remainingCooldown
+                            + "ms"
+            );
+
+            return;
+        }
+
+
+        // -----------------------------------------------------
+        // RECOVERY FAILED STATE RESET
+        //
+        // Once cooldown has expired, a new failure is allowed
+        // to trigger another recovery process.
+        // -----------------------------------------------------
+
+        recoveryState.compareAndSet(
+                RecoveryState.RECOVERY_FAILED,
+                RecoveryState.HEALTHY
+        );
+
+
+        // -----------------------------------------------------
+        // PREVENT DUPLICATE RECOVERY
+        // -----------------------------------------------------
+
+        if (!recoveryState.compareAndSet(
+                RecoveryState.HEALTHY,
+                RecoveryState.RECOVERING)) {
+
+            System.out.println(
+                    "[SELFHEAL] Recovery already in progress. "
+                            + "Skipping duplicate recovery trigger."
+            );
+
+            return;
+        }
+
+
+        // -----------------------------------------------------
+        // FAILURE CLASSIFICATION LOG
+        // -----------------------------------------------------
 
         System.out.println(
                 "[SELFHEAL] Failure classified:"
@@ -171,9 +298,10 @@ public class SelfHealMonitor {
                         + failure.getMessage()
         );
 
-        // ------------------------------------------
-        // Publish FAILURE_CLASSIFIED event
-        // ------------------------------------------
+
+        // -----------------------------------------------------
+        // FAILURE CLASSIFIED EVENT
+        // -----------------------------------------------------
 
         eventPublisher.publish(
                 new SelfHealEvent(
@@ -186,9 +314,10 @@ public class SelfHealMonitor {
                 )
         );
 
-        // ------------------------------------------
-        // Publish FAILURE_DETECTED event
-        // ------------------------------------------
+
+        // -----------------------------------------------------
+        // FAILURE DETECTED EVENT
+        // -----------------------------------------------------
 
         eventPublisher.publish(
                 new SelfHealEvent(
@@ -198,9 +327,10 @@ public class SelfHealMonitor {
                 )
         );
 
-        // ------------------------------------------
-        // Create Recovery Context
-        // ------------------------------------------
+
+        // -----------------------------------------------------
+        // CREATE RECOVERY CONTEXT
+        // -----------------------------------------------------
 
         RecoveryContext context =
                 new RecoveryContext(
@@ -210,13 +340,145 @@ public class SelfHealMonitor {
                         failure.getMessage()
                 );
 
-        // ------------------------------------------
-        // Start Recovery
-        // ------------------------------------------
 
-        recoveryEngine.recover(
-                healthCheck,
-                context
+        // -----------------------------------------------------
+        // EXECUTE RECOVERY
+        // -----------------------------------------------------
+
+        RecoveryResult recoveryResult =
+                recoveryEngine.recover(
+                        healthCheck,
+                        context
+                );
+
+
+        // -----------------------------------------------------
+        // START COOLDOWN
+        // -----------------------------------------------------
+
+        recoveryCooldown.startCooldown();
+
+
+        // -----------------------------------------------------
+        // CREATE RECOVERY HISTORY RECORD
+        // -----------------------------------------------------
+
+        RecoveryRecord record =
+                new RecoveryRecord(
+                        healthCheck.getName(),
+                        failure.getType(),
+                        recoveryEngine.getStrategyName(),
+                        recoveryResult.getAttempts(),
+                        recoveryResult.isSuccessful(),
+                        recoveryResult.getDuration(),
+                        failure.getMessage()
+                );
+
+
+        // -----------------------------------------------------
+        // STORE RECOVERY HISTORY
+        // -----------------------------------------------------
+
+        recoveryHistory.record(
+                record
+        );
+
+
+        // -----------------------------------------------------
+        // LOG RECOVERY HISTORY
+        // -----------------------------------------------------
+
+        System.out.println(
+                "[SELFHEAL] Recovery history recorded:"
+                        + " success="
+                        + recoveryResult.isSuccessful()
+                        + ", attempts="
+                        + recoveryResult.getAttempts()
+                        + ", duration="
+                        + recoveryResult.getDuration()
+                        + "ms"
+        );
+
+
+        // -----------------------------------------------------
+        // UPDATE RECOVERY STATE
+        // -----------------------------------------------------
+
+        if (recoveryResult.isSuccessful()) {
+
+            recoveryState.set(
+                    RecoveryState.HEALTHY
+            );
+
+            System.out.println(
+                    "[SELFHEAL] Recovery state -> HEALTHY"
+            );
+
+        } else {
+
+            recoveryState.set(
+                    RecoveryState.RECOVERY_FAILED
+            );
+
+            System.out.println(
+                    "[SELFHEAL] Recovery state -> RECOVERY_FAILED"
+            );
+        }
+    }
+
+
+    // =========================================================
+    // GET RECOVERY STATE
+    // =========================================================
+
+    public RecoveryState getRecoveryState() {
+
+        return recoveryState.get();
+    }
+
+
+    // =========================================================
+    // GET REMAINING COOLDOWN
+    // =========================================================
+
+    public long getRemainingCooldown() {
+
+        return recoveryCooldown
+                .getRemainingCooldown();
+    }
+
+
+    // =========================================================
+    // CHECK COOLDOWN
+    // =========================================================
+
+    public boolean isRecoveryCooldownActive() {
+
+        return recoveryCooldown
+                .isInCooldown();
+    }
+
+
+    // =========================================================
+    // GET RECOVERY HISTORY
+    // =========================================================
+
+    public RecoveryHistory getRecoveryHistory() {
+
+        return recoveryHistory;
+    }
+
+
+    // =========================================================
+    // STOP MONITOR
+    // =========================================================
+
+    public void stop() {
+
+        scheduler.shutdownNow();
+
+        System.out.println(
+                "[SELFHEAL] Monitor stopped."
         );
     }
 }

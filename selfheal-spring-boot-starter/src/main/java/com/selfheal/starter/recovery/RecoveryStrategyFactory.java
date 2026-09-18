@@ -7,6 +7,7 @@ import java.util.Locale;
 public class RecoveryStrategyFactory {
 
     private final RecoveryAction recoveryAction;
+
     private final SelfHealEventPublisher eventPublisher;
 
     public RecoveryStrategyFactory(
@@ -17,25 +18,31 @@ public class RecoveryStrategyFactory {
         this.eventPublisher = eventPublisher;
     }
 
-    public RecoveryStrategy create(RecoveryPolicy policy) {
+    public RecoveryStrategy create(
+            RecoveryPolicy policy) {
 
         String strategy =
                 policy.getStrategy()
-                        .toLowerCase(Locale.ROOT);
+                        .toLowerCase(
+                                Locale.ROOT
+                        );
 
         return switch (strategy) {
 
             case "retry" -> new RetryRecoveryStrategy(
                     policy.getMaxAttempts(),
                     policy.getDelay(),
+                    policy.getBackoffMultiplier(),
+                    policy.getMaxDelay(),
                     recoveryAction,
                     eventPublisher
             );
 
-            case "immediate" -> new ImmediateRecoveryStrategy(
-                    recoveryAction,
-                    eventPublisher
-            );
+            case "immediate" ->
+                    new ImmediateRecoveryStrategy(
+                            recoveryAction,
+                            eventPublisher
+                    );
 
             default -> throw new IllegalArgumentException(
                     "Unsupported SelfHeal recovery strategy: "

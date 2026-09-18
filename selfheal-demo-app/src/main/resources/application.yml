@@ -13,3 +13,6 @@ selfheal:
     strategy: retry
     max-attempts: 3
     delay: 1000
+    backoff-multiplier: 2.0
+    max-delay: 10000
+    cooldown: 10000

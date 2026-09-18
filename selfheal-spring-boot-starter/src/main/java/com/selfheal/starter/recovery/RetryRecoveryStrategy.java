@@ -6,36 +6,73 @@ import com.selfheal.starter.event.SelfHealEvent;
 import com.selfheal.starter.event.SelfHealEventPublisher;
 import com.selfheal.starter.event.SelfHealEventType;
 
-public class RetryRecoveryStrategy implements RecoveryStrategy {
+public class RetryRecoveryStrategy
+        implements RecoveryStrategy {
 
     private final int maxAttempts;
-    private final long delay;
+
+    private final long initialDelay;
+
+    private final double backoffMultiplier;
+
+    private final long maxDelay;
+
     private final RecoveryAction recoveryAction;
+
     private final SelfHealEventPublisher eventPublisher;
+
+
+    // =========================================================
+    // CONSTRUCTOR
+    // =========================================================
 
     public RetryRecoveryStrategy(
             int maxAttempts,
-            long delay,
+            long initialDelay,
+            double backoffMultiplier,
+            long maxDelay,
             RecoveryAction recoveryAction,
             SelfHealEventPublisher eventPublisher) {
 
         this.maxAttempts = maxAttempts;
-        this.delay = delay;
+        this.initialDelay = initialDelay;
+        this.backoffMultiplier = backoffMultiplier;
+        this.maxDelay = maxDelay;
         this.recoveryAction = recoveryAction;
         this.eventPublisher = eventPublisher;
     }
 
+
+    // =========================================================
+    // STRATEGY NAME
+    // =========================================================
+
     @Override
     public String getName() {
+
         return "RETRY";
     }
 
+
+    // =========================================================
+    // RECOVERY
+    // =========================================================
+
     @Override
-    public boolean recover(
+    public RecoveryResult recover(
             HealthCheck healthCheck,
             RecoveryContext context) {
 
-        String componentName = healthCheck.getName();
+        String componentName =
+                healthCheck.getName();
+
+        long startTime =
+                System.currentTimeMillis();
+
+
+        // ------------------------------------------
+        // Recovery Attempts
+        // ------------------------------------------
 
         for (int attempt = 1;
              attempt <= maxAttempts;
@@ -61,11 +98,21 @@ public class RetryRecoveryStrategy implements RecoveryStrategy {
                             + maxAttempts
             );
 
+
+            // ------------------------------------------
+            // Execute Recovery Action
+            // ------------------------------------------
+
             boolean actionSuccessful =
                     recoveryAction.execute(
                             healthCheck,
                             context
                     );
+
+
+            // ------------------------------------------
+            // Verify Recovery
+            // ------------------------------------------
 
             if (actionSuccessful) {
 
@@ -74,22 +121,68 @@ public class RetryRecoveryStrategy implements RecoveryStrategy {
 
                 if (result.isHealthy()) {
 
+                    long duration =
+                            System.currentTimeMillis()
+                                    - startTime;
+
                     System.out.println(
-                            "[SELFHEAL] Recovery successful."
+                            "[SELFHEAL] Recovery successful on attempt "
+                                    + attempt
                     );
 
-                    return true;
+                    return new RecoveryResult(
+                            true,
+                            attempt,
+                            duration
+                    );
                 }
             }
 
+
+            // ------------------------------------------
+            // Attempt Failed
+            // ------------------------------------------
+
             System.out.println(
-                    "[SELFHEAL] Recovery attempt failed."
+                    "[SELFHEAL] Recovery attempt "
+                            + attempt
+                            + " failed."
             );
 
-            if (attempt < maxAttempts) {
-                sleep();
+
+            // ------------------------------------------
+            // Maximum Attempts Reached
+            // ------------------------------------------
+
+            if (attempt >= maxAttempts) {
+                break;
             }
+
+
+            // ------------------------------------------
+            // Exponential Backoff
+            // ------------------------------------------
+
+            long delay =
+                    calculateDelay(attempt);
+
+            System.out.println(
+                    "[SELFHEAL] Waiting "
+                            + delay
+                            + "ms before next attempt."
+            );
+
+            sleep(delay);
         }
+
+
+        // ------------------------------------------
+        // Recovery Failed
+        // ------------------------------------------
+
+        long duration =
+                System.currentTimeMillis()
+                        - startTime;
 
         System.out.println(
                 "[SELFHEAL] Recovery failed after "
@@ -97,12 +190,45 @@ public class RetryRecoveryStrategy implements RecoveryStrategy {
                         + " attempts."
         );
 
-        return false;
+        return new RecoveryResult(
+                false,
+                maxAttempts,
+                duration
+        );
     }
 
-    private void sleep() {
+
+    // =========================================================
+    // EXPONENTIAL BACKOFF
+    // =========================================================
+
+    private long calculateDelay(int attempt) {
+
+        double calculatedDelay =
+                initialDelay
+                        * Math.pow(
+                        backoffMultiplier,
+                        attempt - 1
+                );
+
+        long delay =
+                (long) calculatedDelay;
+
+        return Math.min(
+                delay,
+                maxDelay
+        );
+    }
+
+
+    // =========================================================
+    // SLEEP
+    // =========================================================
+
+    private void sleep(long delay) {
 
         try {
+
             Thread.sleep(delay);
 
         } catch (InterruptedException e) {

@@ -35,9 +35,9 @@ public class SelfHealProperties {
         this.monitoring = monitoring;
     }
 
-    // --------------------------------------------------
-    // Recovery Configuration
-    // --------------------------------------------------
+    // =========================================================
+    // RECOVERY CONFIGURATION
+    // =========================================================
 
     public static class Recovery {
 
@@ -46,6 +46,12 @@ public class SelfHealProperties {
         private long delay = 1000;
 
         private String strategy = "retry";
+
+        private double backoffMultiplier = 2.0;
+
+        private long maxDelay = 10000;
+
+        private long cooldown = 10000;
 
         public int getMaxAttempts() {
             return maxAttempts;
@@ -70,11 +76,37 @@ public class SelfHealProperties {
         public void setStrategy(String strategy) {
             this.strategy = strategy;
         }
+
+        public double getBackoffMultiplier() {
+            return backoffMultiplier;
+        }
+
+        public void setBackoffMultiplier(
+                double backoffMultiplier) {
+
+            this.backoffMultiplier = backoffMultiplier;
+        }
+
+        public long getMaxDelay() {
+            return maxDelay;
+        }
+
+        public void setMaxDelay(long maxDelay) {
+            this.maxDelay = maxDelay;
+        }
+
+        public long getCooldown() {
+            return cooldown;
+        }
+
+        public void setCooldown(long cooldown) {
+            this.cooldown = cooldown;
+        }
     }
 
-    // --------------------------------------------------
-    // Monitoring Configuration
-    // --------------------------------------------------
+    // =========================================================
+    // MONITORING CONFIGURATION
+    // =========================================================
 
     public static class Monitoring {
 
