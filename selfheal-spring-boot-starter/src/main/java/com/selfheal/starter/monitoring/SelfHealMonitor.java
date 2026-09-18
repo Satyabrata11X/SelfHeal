@@ -11,6 +11,7 @@ import com.selfheal.starter.failure.FailureInfo;
 import com.selfheal.starter.failure.FailureType;
 import com.selfheal.starter.history.RecoveryHistory;
 import com.selfheal.starter.history.RecoveryRecord;
+import com.selfheal.starter.metrics.SelfHealMetrics;
 import com.selfheal.starter.recovery.RecoveryContext;
 import com.selfheal.starter.recovery.RecoveryCooldown;
 import com.selfheal.starter.recovery.RecoveryResult;
@@ -39,6 +40,8 @@ public class SelfHealMonitor {
     private final RecoveryCooldown recoveryCooldown;
 
     private final RecoveryHistory recoveryHistory;
+
+    private final SelfHealMetrics metrics;
 
 
     // =========================================================
@@ -79,7 +82,8 @@ public class SelfHealMonitor {
             FailureClassifier failureClassifier,
             SelfHealProperties properties,
             RecoveryCooldown recoveryCooldown,
-            RecoveryHistory recoveryHistory) {
+            RecoveryHistory recoveryHistory,
+            SelfHealMetrics metrics) {
 
         this.healthCheck = healthCheck;
 
@@ -92,6 +96,8 @@ public class SelfHealMonitor {
         this.recoveryCooldown = recoveryCooldown;
 
         this.recoveryHistory = recoveryHistory;
+
+        this.metrics = metrics;
 
         this.interval =
                 properties.getMonitoring()
@@ -145,6 +151,16 @@ public class SelfHealMonitor {
 
             HealthCheckResult result =
                     healthCheck.check();
+
+
+            // -------------------------------------------------
+            // RECORD HEALTH CHECK METRIC
+            // -------------------------------------------------
+
+            metrics.recordHealthCheck(
+                    result.isHealthy(),
+                    result.getResponseTime()
+            );
 
 
             System.out.println(
@@ -231,7 +247,6 @@ public class SelfHealMonitor {
             FailureInfo failure,
             HealthCheckResult healthCheckResult) {
 
-
         // -----------------------------------------------------
         // COOLDOWN CHECK
         // -----------------------------------------------------
@@ -255,10 +270,16 @@ public class SelfHealMonitor {
 
 
         // -----------------------------------------------------
+        // RECORD FAILURE METRIC
+        // -----------------------------------------------------
+
+        metrics.recordFailureDetected(
+                failure.getType()
+        );
+
+
+        // -----------------------------------------------------
         // RECOVERY FAILED STATE RESET
-        //
-        // Once cooldown has expired, a new failure is allowed
-        // to trigger another recovery process.
         // -----------------------------------------------------
 
         recoveryState.compareAndSet(
@@ -350,6 +371,17 @@ public class SelfHealMonitor {
                         healthCheck,
                         context
                 );
+
+
+        // -----------------------------------------------------
+        // RECORD RECOVERY METRIC
+        // -----------------------------------------------------
+
+        metrics.recordRecovery(
+                recoveryResult.isSuccessful(),
+                recoveryResult.getAttempts(),
+                recoveryResult.getDuration()
+        );
 
 
         // -----------------------------------------------------
@@ -466,6 +498,16 @@ public class SelfHealMonitor {
     public RecoveryHistory getRecoveryHistory() {
 
         return recoveryHistory;
+    }
+
+
+    // =========================================================
+    // GET METRICS
+    // =========================================================
+
+    public SelfHealMetrics getMetrics() {
+
+        return metrics;
     }
 
 

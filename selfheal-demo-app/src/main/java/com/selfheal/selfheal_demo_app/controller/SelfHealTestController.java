@@ -6,6 +6,7 @@ import com.selfheal.starter.failure.FailureType;
 import com.selfheal.starter.history.RecoveryHistory;
 import com.selfheal.starter.history.RecoveryRecord;
 
+import com.selfheal.starter.metrics.SelfHealMetrics;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -20,6 +21,8 @@ public class SelfHealTestController {
 
     private final RecoveryHistory recoveryHistory;
 
+    private final SelfHealMetrics metrics;
+
 
     // =========================================================
     // CONSTRUCTOR
@@ -27,10 +30,12 @@ public class SelfHealTestController {
 
     public SelfHealTestController(
             SelfHealComponent component,
-            RecoveryHistory recoveryHistory) {
+            RecoveryHistory recoveryHistory,
+            SelfHealMetrics metrics) {
 
         this.component = component;
         this.recoveryHistory = recoveryHistory;
+        this.metrics = metrics;
     }
 
 
@@ -260,5 +265,79 @@ public class SelfHealTestController {
         recoveryHistory.clear();
 
         return "SELFHEAL RECOVERY HISTORY CLEARED";
+    }
+
+    @GetMapping("/metrics")
+    public Map<String, Object> getMetrics() {
+
+        Map<String, Object> result =
+                new LinkedHashMap<>();
+
+        result.put(
+                "totalHealthChecks",
+                metrics.getTotalHealthChecks()
+        );
+
+        result.put(
+                "successfulHealthChecks",
+                metrics.getSuccessfulHealthChecks()
+        );
+
+        result.put(
+                "failedHealthChecks",
+                metrics.getFailedHealthChecks()
+        );
+
+        result.put(
+                "healthCheckSuccessRate",
+                metrics.getHealthCheckSuccessRate()
+        );
+
+        result.put(
+                "totalFailuresDetected",
+                metrics.getTotalFailuresDetected()
+        );
+
+        result.put(
+                "totalRecoveryProcesses",
+                metrics.getTotalRecoveryProcesses()
+        );
+
+        result.put(
+                "successfulRecoveries",
+                metrics.getSuccessfulRecoveries()
+        );
+
+        result.put(
+                "failedRecoveries",
+                metrics.getFailedRecoveries()
+        );
+
+        result.put(
+                "totalRecoveryAttempts",
+                metrics.getTotalRecoveryAttempts()
+        );
+
+        result.put(
+                "recoverySuccessRate",
+                metrics.getRecoverySuccessRate()
+        );
+
+        result.put(
+                "lastResponseTime",
+                metrics.getLastResponseTime()
+        );
+
+        result.put(
+                "lastRecoveryDuration",
+                metrics.getLastRecoveryDuration()
+        );
+
+        result.put(
+                "lastFailureType",
+                metrics.getLastFailureType()
+        );
+
+        return result;
     }
 }

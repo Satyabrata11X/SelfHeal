@@ -5,6 +5,9 @@ import com.selfheal.starter.core.SelfHealComponent;
 import com.selfheal.starter.event.SelfHealEventPublisher;
 import com.selfheal.starter.failure.FailureClassifier;
 import com.selfheal.starter.history.RecoveryHistory;
+import com.selfheal.starter.management.SelfHealManagementController;
+import com.selfheal.starter.management.SelfHealManagementService;
+import com.selfheal.starter.metrics.SelfHealMetrics;
 import com.selfheal.starter.monitoring.SelfHealMonitor;
 import com.selfheal.starter.recovery.RecoveryAction;
 import com.selfheal.starter.recovery.RecoveryCooldown;
@@ -178,6 +181,17 @@ public class SelfHealAutoConfiguration {
 
 
     // =========================================================
+    // SELFHEAL METRICS
+    // =========================================================
+
+    @Bean
+    public SelfHealMetrics selfHealMetrics() {
+
+        return new SelfHealMetrics();
+    }
+
+
+    // =========================================================
     // SELFHEAL MONITOR
     // =========================================================
 
@@ -195,7 +209,8 @@ public class SelfHealAutoConfiguration {
             FailureClassifier failureClassifier,
             SelfHealProperties properties,
             RecoveryCooldown recoveryCooldown,
-            RecoveryHistory recoveryHistory) {
+            RecoveryHistory recoveryHistory,
+            SelfHealMetrics metrics) {
 
         SelfHealMonitor monitor =
                 new SelfHealMonitor(
@@ -205,12 +220,53 @@ public class SelfHealAutoConfiguration {
                         failureClassifier,
                         properties,
                         recoveryCooldown,
-                        recoveryHistory
+                        recoveryHistory,
+                        metrics
                 );
 
         monitor.start();
 
         return monitor;
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public SelfHealManagementService selfHealManagementService(
+            SelfHealComponent component,
+            SelfHealMonitor monitor,
+            SelfHealMetrics metrics) {
+
+        return new SelfHealManagementService(
+                component,
+                monitor,
+                metrics
+        );
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public SelfHealManagementController selfHealManagementController(
+            SelfHealComponent component,
+            SelfHealMonitor monitor,
+            SelfHealMetrics metrics,
+            RecoveryHistory recoveryHistory) {
+
+        return new SelfHealManagementController(
+                component,
+                monitor,
+                metrics,
+                recoveryHistory
+        );
     }
 
 
