@@ -7,6 +7,14 @@ import com.selfheal.starter.core.SelfHealComponent;
 import com.selfheal.starter.event.SelfHealEventPublisher;
 import com.selfheal.starter.failure.FailureClassifier;
 import com.selfheal.starter.history.RecoveryHistory;
+import com.selfheal.starter.incident.FailureContextFactory;
+import com.selfheal.starter.incident.FailureContextService;
+import com.selfheal.starter.incident.FailureIncidentRecorder;
+import com.selfheal.starter.incident.InMemoryFailureIncidentRecorder;
+import com.selfheal.starter.incident.SelfHealExceptionInterceptor;
+import com.selfheal.starter.incident.SelfHealIncidentController;
+import com.selfheal.starter.incident.SelfHealWebMvcConfiguration;
+import com.selfheal.starter.incident.StackTraceLocationExtractor;
 import com.selfheal.starter.management.SelfHealManagementController;
 import com.selfheal.starter.management.SelfHealManagementService;
 import com.selfheal.starter.metrics.SelfHealMetrics;
@@ -21,10 +29,13 @@ import com.selfheal.starter.recovery.SelfHealComponentRecoveryAction;
 import com.selfheal.starter.recovery.SelfHealRecoveryEngine;
 
 import io.micrometer.core.instrument.MeterRegistry;
+
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.env.Environment;
+
 
 @AutoConfiguration
 @EnableConfigurationProperties(SelfHealProperties.class)
@@ -36,7 +47,6 @@ public class SelfHealAutoConfiguration {
 
     @Bean
     public SelfHealComponent selfHealComponent() {
-
         return new SelfHealComponent();
     }
 
@@ -47,7 +57,6 @@ public class SelfHealAutoConfiguration {
 
     @Bean
     public SelfHealEventPublisher selfHealEventPublisher() {
-
         return new SelfHealEventPublisher();
     }
 
@@ -58,7 +67,6 @@ public class SelfHealAutoConfiguration {
 
     @Bean
     public FailureClassifier failureClassifier() {
-
         return new FailureClassifier();
     }
 
@@ -69,7 +77,6 @@ public class SelfHealAutoConfiguration {
 
     @Bean
     public RecoveryAction recoveryAction() {
-
         return new SelfHealComponentRecoveryAction();
     }
 
@@ -179,7 +186,6 @@ public class SelfHealAutoConfiguration {
 
     @Bean
     public RecoveryHistory recoveryHistory() {
-
         return new RecoveryHistory();
     }
 
@@ -190,7 +196,6 @@ public class SelfHealAutoConfiguration {
 
     @Bean
     public SelfHealMetrics selfHealMetrics() {
-
         return new SelfHealMetrics();
     }
 
@@ -233,6 +238,11 @@ public class SelfHealAutoConfiguration {
         return monitor;
     }
 
+
+    // =========================================================
+    // MANAGEMENT SERVICE
+    // =========================================================
+
     @Bean
     @ConditionalOnProperty(
             prefix = "selfheal",
@@ -251,6 +261,11 @@ public class SelfHealAutoConfiguration {
                 metrics
         );
     }
+
+
+    // =========================================================
+    // MANAGEMENT CONTROLLER
+    // =========================================================
 
     @Bean
     @ConditionalOnProperty(
@@ -273,9 +288,10 @@ public class SelfHealAutoConfiguration {
         );
     }
 
+
     // =========================================================
-// SELFHEAL ACTUATOR HEALTH INDICATOR
-// =========================================================
+    // ACTUATOR HEALTH INDICATOR
+    // =========================================================
 
     @Bean
     @ConditionalOnProperty(
@@ -292,9 +308,10 @@ public class SelfHealAutoConfiguration {
         );
     }
 
+
     // =========================================================
-// SELFHEAL ACTUATOR INFO CONTRIBUTOR
-// =========================================================
+    // ACTUATOR INFO CONTRIBUTOR
+    // =========================================================
 
     @Bean
     @ConditionalOnProperty(
@@ -311,9 +328,10 @@ public class SelfHealAutoConfiguration {
         );
     }
 
+
     // =========================================================
-// SELFHEAL MICROMETER METRICS
-// =========================================================
+    // MICROMETER METRICS
+    // =========================================================
 
     @Bean
     @ConditionalOnProperty(
@@ -332,13 +350,98 @@ public class SelfHealAutoConfiguration {
         );
     }
 
+
+    // =========================================================
+    // FAILURE CONTEXT
+    // =========================================================
+
+    @Bean
+    public StackTraceLocationExtractor stackTraceLocationExtractor() {
+        return new StackTraceLocationExtractor();
+    }
+
+
+    @Bean
+    public FailureContextFactory failureContextFactory(
+            StackTraceLocationExtractor locationExtractor) {
+
+        return new FailureContextFactory(
+                locationExtractor
+        );
+    }
+
+
+    @Bean
+    public FailureContextService failureContextService(
+            FailureContextFactory contextFactory) {
+
+        return new FailureContextService(
+                contextFactory
+        );
+    }
+
+
+    // =========================================================
+    // FAILURE INCIDENT RECORDER
+    // =========================================================
+
+    @Bean
+    public InMemoryFailureIncidentRecorder failureIncidentRecorder() {
+        return new InMemoryFailureIncidentRecorder();
+    }
+
+
+    // =========================================================
+    // EXCEPTION INTERCEPTION
+    // =========================================================
+    @Bean
+    public SelfHealExceptionInterceptor selfHealExceptionInterceptor(
+            FailureContextService contextService,
+            FailureIncidentRecorder incidentRecorder,
+            Environment environment) {
+
+        return new SelfHealExceptionInterceptor(
+                contextService,
+                incidentRecorder,
+                environment
+        );
+    }
+
+
+    // =========================================================
+    // SPRING MVC CONFIGURATION
+    // =========================================================
+
+    @Bean
+    public SelfHealWebMvcConfiguration selfHealWebMvcConfiguration(
+            SelfHealExceptionInterceptor interceptor) {
+
+        return new SelfHealWebMvcConfiguration(
+                interceptor
+        );
+    }
+
+
+    // =========================================================
+    // INCIDENT CONTROLLER
+    // =========================================================
+
+    @Bean
+    public SelfHealIncidentController selfHealIncidentController(
+            InMemoryFailureIncidentRecorder recorder) {
+
+        return new SelfHealIncidentController(
+                recorder
+        );
+    }
+
+
     // =========================================================
     // INITIALIZER
     // =========================================================
 
     @Bean
     public SelfHealInitializer selfHealInitializer() {
-
         return new SelfHealInitializer();
     }
 }
