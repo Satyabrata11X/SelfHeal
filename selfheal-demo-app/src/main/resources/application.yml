@@ -16,3 +16,13 @@ selfheal:
     backoff-multiplier: 2.0
     max-delay: 10000
     cooldown: 10000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+  endpoint:
+    health:
+      show-details: always

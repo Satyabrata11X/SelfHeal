@@ -1,5 +1,7 @@
 package com.selfheal.starter;
 
+import com.selfheal.starter.actuator.SelfHealHealthIndicator;
+import com.selfheal.starter.actuator.SelfHealInfoContributor;
 import com.selfheal.starter.config.SelfHealProperties;
 import com.selfheal.starter.core.SelfHealComponent;
 import com.selfheal.starter.event.SelfHealEventPublisher;
@@ -8,6 +10,7 @@ import com.selfheal.starter.history.RecoveryHistory;
 import com.selfheal.starter.management.SelfHealManagementController;
 import com.selfheal.starter.management.SelfHealManagementService;
 import com.selfheal.starter.metrics.SelfHealMetrics;
+import com.selfheal.starter.metrics.SelfHealMetricsBinder;
 import com.selfheal.starter.monitoring.SelfHealMonitor;
 import com.selfheal.starter.recovery.RecoveryAction;
 import com.selfheal.starter.recovery.RecoveryCooldown;
@@ -17,6 +20,7 @@ import com.selfheal.starter.recovery.RecoveryStrategyFactory;
 import com.selfheal.starter.recovery.SelfHealComponentRecoveryAction;
 import com.selfheal.starter.recovery.SelfHealRecoveryEngine;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -269,6 +273,64 @@ public class SelfHealAutoConfiguration {
         );
     }
 
+    // =========================================================
+// SELFHEAL ACTUATOR HEALTH INDICATOR
+// =========================================================
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public SelfHealHealthIndicator selfHealHealthIndicator(
+            SelfHealComponent component) {
+
+        return new SelfHealHealthIndicator(
+                component
+        );
+    }
+
+    // =========================================================
+// SELFHEAL ACTUATOR INFO CONTRIBUTOR
+// =========================================================
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public SelfHealInfoContributor selfHealInfoContributor(
+            SelfHealManagementService managementService) {
+
+        return new SelfHealInfoContributor(
+                managementService
+        );
+    }
+
+    // =========================================================
+// SELFHEAL MICROMETER METRICS
+// =========================================================
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public SelfHealMetricsBinder selfHealMetricsBinder(
+            SelfHealMetrics metrics,
+            MeterRegistry meterRegistry) {
+
+        return new SelfHealMetricsBinder(
+                metrics,
+                meterRegistry
+        );
+    }
 
     // =========================================================
     // INITIALIZER
