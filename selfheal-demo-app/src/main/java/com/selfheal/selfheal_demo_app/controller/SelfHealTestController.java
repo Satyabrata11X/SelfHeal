@@ -7,6 +7,8 @@ import com.selfheal.starter.dependency.DependencyRegistry;
 import com.selfheal.starter.dependency.DependencyRecoveryService;
 import com.selfheal.starter.dependency.DependencyStatus;
 import com.selfheal.starter.dependency.DependencyType;
+import com.selfheal.starter.event.SelfHealEventListener;
+import com.selfheal.starter.event.SelfHealEventPublisher;
 import com.selfheal.starter.failure.FailureType;
 import com.selfheal.starter.history.RecoveryHistory;
 import com.selfheal.starter.history.RecoveryRecord;
@@ -42,7 +44,8 @@ public class SelfHealTestController {
             RecoveryHistory recoveryHistory,
             SelfHealMetrics metrics,
             DependencyRegistry dependencyRegistry,
-            DependencyRecoveryService dependencyRecoveryService) {
+            DependencyRecoveryService dependencyRecoveryService,
+            SelfHealEventPublisher eventPublisher) {
 
         this.component = component;
 
@@ -53,6 +56,18 @@ public class SelfHealTestController {
         this.dependencyRegistry = dependencyRegistry;
 
         this.dependencyRecoveryService = dependencyRecoveryService;
+
+        SelfHealEventListener listener =
+                event -> System.out.println(
+                        "[DEMO-LISTENER] "
+                                + event.getType()
+                                + " | "
+                                + event.getComponentName()
+                                + " | "
+                                + event.getMessage()
+                );
+
+        eventPublisher.registerListener(listener);
 
         registerDemoDependencies();
     }

@@ -81,6 +81,12 @@ public class InMemoryFailureIncidentRecorder
                 "[SELFHEAL-INCIDENT] Message: "
                         + context.getMessage()
         );
+
+        // Feature #4 - Failure Fingerprinting
+        System.out.println(
+                "[SELFHEAL-INCIDENT] Fingerprint: "
+                        + context.getFingerprint()
+        );
     }
 
     private boolean isDuplicate(

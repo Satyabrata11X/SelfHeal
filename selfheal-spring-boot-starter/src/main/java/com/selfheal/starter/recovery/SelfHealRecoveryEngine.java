@@ -1,5 +1,7 @@
 package com.selfheal.starter.recovery;
 
+import com.selfheal.starter.audit.RecoveryAuditEntry;
+import com.selfheal.starter.audit.RecoveryAuditTrail;
 import com.selfheal.starter.core.HealthCheck;
 import com.selfheal.starter.event.SelfHealEvent;
 import com.selfheal.starter.event.SelfHealEventPublisher;
@@ -15,6 +17,8 @@ public class SelfHealRecoveryEngine {
 
     private final RecoveryEscalationHandler escalationHandler;
 
+    private final RecoveryAuditTrail auditTrail;
+
 
     // =========================================================
     // CONSTRUCTOR
@@ -24,7 +28,8 @@ public class SelfHealRecoveryEngine {
             RecoveryStrategy recoveryStrategy,
             SelfHealEventPublisher eventPublisher,
             CircuitBreakerManager circuitBreakerManager,
-            RecoveryEscalationHandler escalationHandler) {
+            RecoveryEscalationHandler escalationHandler,
+            RecoveryAuditTrail auditTrail) {
 
         if (recoveryStrategy == null) {
             throw new IllegalArgumentException(
@@ -50,10 +55,17 @@ public class SelfHealRecoveryEngine {
             );
         }
 
+        if (auditTrail == null) {
+            throw new IllegalArgumentException(
+                    "Recovery audit trail cannot be null"
+            );
+        }
+
         this.recoveryStrategy = recoveryStrategy;
         this.eventPublisher = eventPublisher;
         this.circuitBreakerManager = circuitBreakerManager;
         this.escalationHandler = escalationHandler;
+        this.auditTrail = auditTrail;
     }
 
 
@@ -108,11 +120,21 @@ public class SelfHealRecoveryEngine {
                     )
             );
 
-            return new RecoveryResult(
-                    false,
-                    0,
-                    0
+            RecoveryResult blockedResult =
+                    new RecoveryResult(
+                            false,
+                            0,
+                            0
+                    );
+
+            recordAudit(
+                    componentName,
+                    context,
+                    blockedResult,
+                    "Recovery blocked by circuit breaker"
             );
+
+            return blockedResult;
         }
 
 
@@ -263,10 +285,50 @@ public class SelfHealRecoveryEngine {
 
 
         // -----------------------------------------------------
+        // FEATURE #7
+        // RECOVERY AUDIT
+        // -----------------------------------------------------
+
+        recordAudit(
+                componentName,
+                context,
+                result,
+                result.isSuccessful()
+                        ? "Recovery completed successfully"
+                        : "Recovery failed after all attempts"
+        );
+
+
+        // -----------------------------------------------------
         // RETURN RECOVERY RESULT
         // -----------------------------------------------------
 
         return result;
+    }
+
+
+    // =========================================================
+    // RECORD RECOVERY AUDIT
+    // =========================================================
+
+    private void recordAudit(
+            String componentName,
+            RecoveryContext context,
+            RecoveryResult result,
+            String message) {
+
+        RecoveryAuditEntry auditEntry =
+                new RecoveryAuditEntry(
+                        componentName,
+                        context.getFailureType(),
+                        recoveryStrategy.getName(),
+                        result.getAttempts(),
+                        result.isSuccessful(),
+                        result.getDuration(),
+                        message
+                );
+
+        auditTrail.record(auditEntry);
     }
 
 
@@ -297,5 +359,15 @@ public class SelfHealRecoveryEngine {
     public RecoveryEscalationHandler getEscalationHandler() {
 
         return escalationHandler;
+    }
+
+
+    // =========================================================
+    // GET AUDIT TRAIL
+    // =========================================================
+
+    public RecoveryAuditTrail getAuditTrail() {
+
+        return auditTrail;
     }
 }

@@ -2,6 +2,10 @@ package com.selfheal.starter;
 
 import com.selfheal.starter.actuator.SelfHealHealthIndicator;
 import com.selfheal.starter.actuator.SelfHealInfoContributor;
+import com.selfheal.starter.alert.AlertManager;
+import com.selfheal.starter.alert.ConsoleAlertNotifier;
+import com.selfheal.starter.audit.InMemoryRecoveryAuditTrail;
+import com.selfheal.starter.audit.RecoveryAuditTrail;
 import com.selfheal.starter.config.SelfHealProperties;
 import com.selfheal.starter.core.SelfHealComponent;
 import com.selfheal.starter.dependency.DependencyFailureDetector;
@@ -9,6 +13,7 @@ import com.selfheal.starter.dependency.DependencyRecoveryService;
 import com.selfheal.starter.dependency.DependencyRegistry;
 import com.selfheal.starter.event.SelfHealEventPublisher;
 import com.selfheal.starter.failure.FailureClassifier;
+import com.selfheal.starter.fingerprint.FailureFingerprintGenerator;
 import com.selfheal.starter.history.RecoveryHistory;
 import com.selfheal.starter.incident.FailureContextFactory;
 import com.selfheal.starter.incident.FailureContextService;
@@ -60,8 +65,30 @@ public class SelfHealAutoConfiguration {
     // =========================================================
 
     @Bean
-    public SelfHealEventPublisher selfHealEventPublisher() {
-        return new SelfHealEventPublisher();
+    public ConsoleAlertNotifier consoleAlertNotifier() {
+        return new ConsoleAlertNotifier();
+    }
+
+    @Bean
+    public AlertManager alertManager(
+            ConsoleAlertNotifier consoleAlertNotifier) {
+
+        AlertManager alertManager = new AlertManager();
+
+        alertManager.registerNotifier(
+                consoleAlertNotifier
+        );
+
+        return alertManager;
+    }
+
+    @Bean
+    public SelfHealEventPublisher selfHealEventPublisher(
+            AlertManager alertManager) {
+
+        return new SelfHealEventPublisher(
+                alertManager
+        );
     }
 
 
@@ -181,13 +208,15 @@ public class SelfHealAutoConfiguration {
             RecoveryStrategy recoveryStrategy,
             SelfHealEventPublisher eventPublisher,
             CircuitBreakerManager circuitBreakerManager,
-            RecoveryEscalationHandler escalationHandler) {
+            RecoveryEscalationHandler escalationHandler,
+            RecoveryAuditTrail auditTrail) {
 
         return new SelfHealRecoveryEngine(
                 recoveryStrategy,
                 eventPublisher,
                 circuitBreakerManager,
-                escalationHandler
+                escalationHandler,
+                auditTrail
         );
     }
 
@@ -298,13 +327,8 @@ public class SelfHealAutoConfiguration {
 // =========================================================
 // MANAGEMENT CONTROLLER
 // =========================================================
+
 @Bean
-@ConditionalOnProperty(
-        prefix = "selfheal",
-        name = "enabled",
-        havingValue = "true",
-        matchIfMissing = true
-)
 public SelfHealManagementController selfHealManagementController(
         SelfHealComponent component,
         SelfHealMonitor monitor,
@@ -313,7 +337,8 @@ public SelfHealManagementController selfHealManagementController(
         CircuitBreakerManager circuitBreakerManager,
         DependencyRegistry dependencyRegistry,
         DependencyFailureDetector dependencyFailureDetector,
-        RecoveryEscalationHandler escalationHandler) {
+        RecoveryEscalationHandler escalationHandler,
+        RecoveryAuditTrail recoveryAuditTrail) {
 
     return new SelfHealManagementController(
             component,
@@ -323,7 +348,8 @@ public SelfHealManagementController selfHealManagementController(
             circuitBreakerManager,
             dependencyRegistry,
             dependencyFailureDetector,
-            escalationHandler
+            escalationHandler,
+            recoveryAuditTrail
     );
 }
 
@@ -408,13 +434,33 @@ public SelfHealManagementController selfHealManagementController(
         );
     }
 
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public FailureFingerprintGenerator failureFingerprintGenerator() {
+
+        return new FailureFingerprintGenerator();
+    }
+
 
     @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
     public FailureContextService failureContextService(
-            FailureContextFactory contextFactory) {
+            FailureContextFactory contextFactory,
+            FailureFingerprintGenerator fingerprintGenerator) {
 
         return new FailureContextService(
-                contextFactory
+                contextFactory,
+                fingerprintGenerator
         );
     }
 
@@ -577,6 +623,11 @@ public SelfHealManagementController selfHealManagementController(
                 failureClassifier,
                 recoveryEngine
         );
+    }
+
+    @Bean
+    public RecoveryAuditTrail recoveryAuditTrail() {
+        return new InMemoryRecoveryAuditTrail();
     }
 
     // =========================================================

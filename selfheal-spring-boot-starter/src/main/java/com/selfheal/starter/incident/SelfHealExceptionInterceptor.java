@@ -37,6 +37,11 @@ public class SelfHealExceptionInterceptor
             Object handler,
             Exception exception) {
 
+        System.out.println(
+                "[SELFHEAL-DEBUG] Exception intercepted: "
+                        + exception.getClass().getName()
+        );
+
         try {
 
             String applicationName =

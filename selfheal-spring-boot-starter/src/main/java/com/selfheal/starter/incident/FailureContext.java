@@ -30,6 +30,13 @@ public class FailureContext {
 
     private final Instant timestamp;
 
+    private final String fingerprint;
+
+
+    // =========================================================
+    // EXISTING CONSTRUCTOR
+    // =========================================================
+
     public FailureContext(
             String applicationName,
             String componentName,
@@ -43,6 +50,78 @@ public class FailureContext {
             String message,
             String stackTrace) {
 
+        this(
+                applicationName,
+                componentName,
+                packageName,
+                className,
+                methodName,
+                fileName,
+                lineNumber,
+                exceptionType,
+                failureType,
+                message,
+                stackTrace,
+                null
+        );
+    }
+
+
+    // =========================================================
+    // CONSTRUCTOR WITH FINGERPRINT
+    // =========================================================
+
+    public FailureContext(
+            String applicationName,
+            String componentName,
+            String packageName,
+            String className,
+            String methodName,
+            String fileName,
+            int lineNumber,
+            String exceptionType,
+            FailureType failureType,
+            String message,
+            String stackTrace,
+            String fingerprint) {
+
+        this(
+                applicationName,
+                componentName,
+                packageName,
+                className,
+                methodName,
+                fileName,
+                lineNumber,
+                exceptionType,
+                failureType,
+                message,
+                stackTrace,
+                fingerprint,
+                Instant.now()
+        );
+    }
+
+
+    // =========================================================
+    // INTERNAL CONSTRUCTOR
+    // =========================================================
+
+    private FailureContext(
+            String applicationName,
+            String componentName,
+            String packageName,
+            String className,
+            String methodName,
+            String fileName,
+            int lineNumber,
+            String exceptionType,
+            FailureType failureType,
+            String message,
+            String stackTrace,
+            String fingerprint,
+            Instant timestamp) {
+
         this.applicationName = applicationName;
         this.componentName = componentName;
         this.packageName = packageName;
@@ -54,8 +133,39 @@ public class FailureContext {
         this.failureType = failureType;
         this.message = message;
         this.stackTrace = stackTrace;
-        this.timestamp = Instant.now();
+        this.fingerprint = fingerprint;
+        this.timestamp = timestamp;
     }
+
+
+    // =========================================================
+    // ADD FINGERPRINT
+    // =========================================================
+
+    public FailureContext withFingerprint(
+            String fingerprint) {
+
+        return new FailureContext(
+                applicationName,
+                componentName,
+                packageName,
+                className,
+                methodName,
+                fileName,
+                lineNumber,
+                exceptionType,
+                failureType,
+                message,
+                stackTrace,
+                fingerprint,
+                timestamp
+        );
+    }
+
+
+    // =========================================================
+    // GETTERS
+    // =========================================================
 
     public String getApplicationName() {
         return applicationName;
@@ -103,5 +213,9 @@ public class FailureContext {
 
     public Instant getTimestamp() {
         return timestamp;
+    }
+
+    public String getFingerprint() {
+        return fingerprint;
     }
 }

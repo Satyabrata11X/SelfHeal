@@ -1,5 +1,7 @@
 package com.selfheal.starter.management;
 
+import com.selfheal.starter.audit.RecoveryAuditEntry;
+import com.selfheal.starter.audit.RecoveryAuditTrail;
 import com.selfheal.starter.core.HealthCheckResult;
 import com.selfheal.starter.core.SelfHealComponent;
 import com.selfheal.starter.dependency.Dependency;
@@ -14,6 +16,7 @@ import com.selfheal.starter.recovery.CircuitBreakerManager;
 import com.selfheal.starter.recovery.RecoveryEscalation;
 import com.selfheal.starter.recovery.RecoveryEscalationHandler;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -49,6 +52,8 @@ public class SelfHealManagementController {
 
     private final RecoveryEscalationHandler escalationHandler;
 
+    private final RecoveryAuditTrail recoveryAuditTrail;
+
 
     // =========================================================
     // CONSTRUCTOR
@@ -62,7 +67,8 @@ public class SelfHealManagementController {
             CircuitBreakerManager circuitBreakerManager,
             DependencyRegistry dependencyRegistry,
             DependencyFailureDetector dependencyFailureDetector,
-            RecoveryEscalationHandler escalationHandler) {
+            RecoveryEscalationHandler escalationHandler,
+            RecoveryAuditTrail recoveryAuditTrail) {
 
         this.component = component;
         this.monitor = monitor;
@@ -72,6 +78,7 @@ public class SelfHealManagementController {
         this.dependencyRegistry = dependencyRegistry;
         this.dependencyFailureDetector = dependencyFailureDetector;
         this.escalationHandler = escalationHandler;
+        this.recoveryAuditTrail = recoveryAuditTrail;
     }
 
 
@@ -364,6 +371,30 @@ public class SelfHealManagementController {
         recoveryHistory.clear();
 
         return "SELFHEAL RECOVERY HISTORY CLEARED";
+    }
+
+
+    // =========================================================
+    // RECOVERY AUDIT TRAIL
+    // =========================================================
+
+    @GetMapping("/audit")
+    public List<RecoveryAuditEntry> auditTrail() {
+
+        return recoveryAuditTrail.findAll();
+    }
+
+
+    // =========================================================
+    // CLEAR RECOVERY AUDIT TRAIL
+    // =========================================================
+
+    @DeleteMapping("/audit")
+    public ResponseEntity<Void> clearAuditTrail() {
+
+        recoveryAuditTrail.clear();
+
+        return ResponseEntity.noContent().build();
     }
 
 
