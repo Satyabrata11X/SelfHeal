@@ -4,6 +4,9 @@ import com.selfheal.starter.actuator.SelfHealHealthIndicator;
 import com.selfheal.starter.actuator.SelfHealInfoContributor;
 import com.selfheal.starter.config.SelfHealProperties;
 import com.selfheal.starter.core.SelfHealComponent;
+import com.selfheal.starter.dependency.DependencyFailureDetector;
+import com.selfheal.starter.dependency.DependencyRecoveryService;
+import com.selfheal.starter.dependency.DependencyRegistry;
 import com.selfheal.starter.event.SelfHealEventPublisher;
 import com.selfheal.starter.failure.FailureClassifier;
 import com.selfheal.starter.history.RecoveryHistory;
@@ -22,13 +25,7 @@ import com.selfheal.starter.monitoring.SelfHealMonitor;
 import com.selfheal.starter.persistence.FailureIncidentPersistence;
 import com.selfheal.starter.persistence.SelfHealPersistenceManager;
 import com.selfheal.starter.persistence.SelfHealPersistenceProperties;
-import com.selfheal.starter.recovery.RecoveryAction;
-import com.selfheal.starter.recovery.RecoveryCooldown;
-import com.selfheal.starter.recovery.RecoveryPolicy;
-import com.selfheal.starter.recovery.RecoveryStrategy;
-import com.selfheal.starter.recovery.RecoveryStrategyFactory;
-import com.selfheal.starter.recovery.SelfHealComponentRecoveryAction;
-import com.selfheal.starter.recovery.SelfHealRecoveryEngine;
+import com.selfheal.starter.recovery.*;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
@@ -160,15 +157,37 @@ public class SelfHealAutoConfiguration {
     // =========================================================
     // RECOVERY ENGINE
     // =========================================================
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public RecoveryEscalationHandler recoveryEscalationHandler(
+            SelfHealEventPublisher eventPublisher) {
+
+        return new RecoveryEscalationHandler(eventPublisher);
+    }
 
     @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
     public SelfHealRecoveryEngine selfHealRecoveryEngine(
             RecoveryStrategy recoveryStrategy,
-            SelfHealEventPublisher eventPublisher) {
+            SelfHealEventPublisher eventPublisher,
+            CircuitBreakerManager circuitBreakerManager,
+            RecoveryEscalationHandler escalationHandler) {
 
         return new SelfHealRecoveryEngine(
                 recoveryStrategy,
-                eventPublisher
+                eventPublisher,
+                circuitBreakerManager,
+                escalationHandler
         );
     }
 
@@ -247,8 +266,8 @@ public class SelfHealAutoConfiguration {
 
 
     // =========================================================
-    // MANAGEMENT SERVICE
-    // =========================================================
+// MANAGEMENT SERVICE
+// =========================================================
 
     @Bean
     @ConditionalOnProperty(
@@ -260,41 +279,53 @@ public class SelfHealAutoConfiguration {
     public SelfHealManagementService selfHealManagementService(
             SelfHealComponent component,
             SelfHealMonitor monitor,
-            SelfHealMetrics metrics) {
+            SelfHealMetrics metrics,
+            CircuitBreakerManager circuitBreakerManager,
+            DependencyRegistry dependencyRegistry,
+            DependencyFailureDetector dependencyFailureDetector) {
 
         return new SelfHealManagementService(
                 component,
                 monitor,
-                metrics
-        );
-    }
-
-
-    // =========================================================
-    // MANAGEMENT CONTROLLER
-    // =========================================================
-
-    @Bean
-    @ConditionalOnProperty(
-            prefix = "selfheal",
-            name = "enabled",
-            havingValue = "true",
-            matchIfMissing = true
-    )
-    public SelfHealManagementController selfHealManagementController(
-            SelfHealComponent component,
-            SelfHealMonitor monitor,
-            SelfHealMetrics metrics,
-            RecoveryHistory recoveryHistory) {
-
-        return new SelfHealManagementController(
-                component,
-                monitor,
                 metrics,
-                recoveryHistory
+                circuitBreakerManager,
+                dependencyRegistry,
+                dependencyFailureDetector
         );
     }
 
+
+// =========================================================
+// MANAGEMENT CONTROLLER
+// =========================================================
+@Bean
+@ConditionalOnProperty(
+        prefix = "selfheal",
+        name = "enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
+public SelfHealManagementController selfHealManagementController(
+        SelfHealComponent component,
+        SelfHealMonitor monitor,
+        SelfHealMetrics metrics,
+        RecoveryHistory recoveryHistory,
+        CircuitBreakerManager circuitBreakerManager,
+        DependencyRegistry dependencyRegistry,
+        DependencyFailureDetector dependencyFailureDetector,
+        RecoveryEscalationHandler escalationHandler) {
+
+    return new SelfHealManagementController(
+            component,
+            monitor,
+            metrics,
+            recoveryHistory,
+            circuitBreakerManager,
+            dependencyRegistry,
+            dependencyFailureDetector,
+            escalationHandler
+    );
+}
 
     // =========================================================
     // ACTUATOR HEALTH INDICATOR
@@ -476,6 +507,77 @@ public class SelfHealAutoConfiguration {
         );
     }
 
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal.circuit-breaker",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public CircuitBreakerManager circuitBreakerManager(
+            SelfHealProperties properties) {
+
+        return new CircuitBreakerManager(
+                properties.getCircuitBreaker()
+        );
+    }
+
+    // =========================================================
+// DEPENDENCY REGISTRY
+// =========================================================
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public DependencyRegistry dependencyRegistry() {
+
+        return new DependencyRegistry();
+    }
+
+
+// =========================================================
+// DEPENDENCY FAILURE DETECTOR
+// =========================================================
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public DependencyFailureDetector dependencyFailureDetector(
+            DependencyRegistry dependencyRegistry) {
+
+        return new DependencyFailureDetector(
+                dependencyRegistry
+        );
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public DependencyRecoveryService dependencyRecoveryService(
+            DependencyRegistry dependencyRegistry,
+            DependencyFailureDetector dependencyFailureDetector,
+            FailureClassifier failureClassifier,
+            SelfHealRecoveryEngine recoveryEngine) {
+
+        return new DependencyRecoveryService(
+                dependencyRegistry,
+                dependencyFailureDetector,
+                failureClassifier,
+                recoveryEngine
+        );
+    }
 
     // =========================================================
     // INITIALIZER

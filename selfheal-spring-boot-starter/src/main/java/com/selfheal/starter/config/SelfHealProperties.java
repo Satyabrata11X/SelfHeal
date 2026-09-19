@@ -11,6 +11,8 @@ public class SelfHealProperties {
 
     private Monitoring monitoring = new Monitoring();
 
+    private CircuitBreaker circuitBreaker = new CircuitBreaker();
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -33,6 +35,14 @@ public class SelfHealProperties {
 
     public void setMonitoring(Monitoring monitoring) {
         this.monitoring = monitoring;
+    }
+
+    public CircuitBreaker getCircuitBreaker() {
+        return circuitBreaker;
+    }
+
+    public void setCircuitBreaker(CircuitBreaker circuitBreaker) {
+        this.circuitBreaker = circuitBreaker;
     }
 
     // =========================================================
@@ -130,6 +140,53 @@ public class SelfHealProperties {
                 long latencyThreshold) {
 
             this.latencyThreshold = latencyThreshold;
+        }
+    }
+
+    // =========================================================
+    // CIRCUIT BREAKER CONFIGURATION
+    // =========================================================
+
+    public static class CircuitBreaker {
+
+        private boolean enabled = true;
+
+        private int failureThreshold = 3;
+
+        private long openDuration = 10000;
+
+        private int halfOpenMaxCalls = 1;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getFailureThreshold() {
+            return failureThreshold;
+        }
+
+        public void setFailureThreshold(int failureThreshold) {
+            this.failureThreshold = failureThreshold;
+        }
+
+        public long getOpenDuration() {
+            return openDuration;
+        }
+
+        public void setOpenDuration(long openDuration) {
+            this.openDuration = openDuration;
+        }
+
+        public int getHalfOpenMaxCalls() {
+            return halfOpenMaxCalls;
+        }
+
+        public void setHalfOpenMaxCalls(int halfOpenMaxCalls) {
+            this.halfOpenMaxCalls = halfOpenMaxCalls;
         }
     }
 }

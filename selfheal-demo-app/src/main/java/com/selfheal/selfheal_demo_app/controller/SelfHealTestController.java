@@ -2,11 +2,16 @@ package com.selfheal.selfheal_demo_app.controller;
 
 import com.selfheal.starter.core.HealthCheckResult;
 import com.selfheal.starter.core.SelfHealComponent;
+import com.selfheal.starter.dependency.Dependency;
+import com.selfheal.starter.dependency.DependencyRegistry;
+import com.selfheal.starter.dependency.DependencyRecoveryService;
+import com.selfheal.starter.dependency.DependencyStatus;
+import com.selfheal.starter.dependency.DependencyType;
 import com.selfheal.starter.failure.FailureType;
 import com.selfheal.starter.history.RecoveryHistory;
 import com.selfheal.starter.history.RecoveryRecord;
-
 import com.selfheal.starter.metrics.SelfHealMetrics;
+
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
@@ -23,6 +28,10 @@ public class SelfHealTestController {
 
     private final SelfHealMetrics metrics;
 
+    private final DependencyRegistry dependencyRegistry;
+
+    private final DependencyRecoveryService dependencyRecoveryService;
+
 
     // =========================================================
     // CONSTRUCTOR
@@ -31,11 +40,74 @@ public class SelfHealTestController {
     public SelfHealTestController(
             SelfHealComponent component,
             RecoveryHistory recoveryHistory,
-            SelfHealMetrics metrics) {
+            SelfHealMetrics metrics,
+            DependencyRegistry dependencyRegistry,
+            DependencyRecoveryService dependencyRecoveryService) {
 
         this.component = component;
+
         this.recoveryHistory = recoveryHistory;
+
         this.metrics = metrics;
+
+        this.dependencyRegistry = dependencyRegistry;
+
+        this.dependencyRecoveryService = dependencyRecoveryService;
+
+        registerDemoDependencies();
+    }
+
+
+    // =========================================================
+    // REGISTER DEMO DEPENDENCIES
+    // =========================================================
+
+    private void registerDemoDependencies() {
+
+        registerDependency(
+                "postgresql",
+                DependencyType.DATABASE
+        );
+
+        registerDependency(
+                "redis",
+                DependencyType.CACHE
+        );
+
+        registerDependency(
+                "payment-api",
+                DependencyType.REST_API
+        );
+    }
+
+
+    private void registerDependency(
+            String name,
+            DependencyType type) {
+
+        if (dependencyRegistry.contains(name)) {
+            return;
+        }
+
+        Dependency dependency =
+                new Dependency(
+                        name,
+                        type
+                );
+
+        dependency.setStatus(
+                DependencyStatus.UP
+        );
+
+        dependency.setResponseTime(0);
+
+        dependency.setMessage(
+                "Dependency is healthy"
+        );
+
+        dependencyRegistry.register(
+                dependency
+        );
     }
 
 
@@ -64,7 +136,7 @@ public class SelfHealTestController {
 
 
     // =========================================================
-    // MANUAL RECOVERY
+    // MANUAL COMPONENT RECOVERY
     // =========================================================
 
     @PostMapping("/recover")
@@ -195,6 +267,156 @@ public class SelfHealTestController {
 
 
     // =========================================================
+    // DEPENDENCY STATUS
+    // =========================================================
+
+    @GetMapping("/dependencies")
+    public Map<String, Dependency> dependencyStatus() {
+
+        return dependencyRegistry.getAll();
+    }
+
+
+    // =========================================================
+    // SIMULATE DEPENDENCY UP
+    // =========================================================
+
+    @PostMapping("/dependencies/{name}/up")
+    public String dependencyUp(
+            @PathVariable String name) {
+
+        Dependency dependency =
+                dependencyRegistry.get(name);
+
+        if (dependency == null) {
+
+            return "Dependency not found: " + name;
+        }
+
+        dependency.setStatus(
+                DependencyStatus.UP
+        );
+
+        dependency.setMessage(
+                "Dependency is healthy"
+        );
+
+        return "DEPENDENCY "
+                + name
+                + ": UP";
+    }
+
+
+    // =========================================================
+    // SIMULATE DEPENDENCY DOWN
+    // =========================================================
+
+    @PostMapping("/dependencies/{name}/down")
+    public String dependencyDown(
+            @PathVariable String name) {
+
+        Dependency dependency =
+                dependencyRegistry.get(name);
+
+        if (dependency == null) {
+
+            return "Dependency not found: " + name;
+        }
+
+        dependency.setStatus(
+                DependencyStatus.DOWN
+        );
+
+        dependency.setMessage(
+                "Dependency is unavailable"
+        );
+
+        return "DEPENDENCY "
+                + name
+                + ": DOWN";
+    }
+
+
+    // =========================================================
+    // SIMULATE DEPENDENCY DEGRADED
+    // =========================================================
+
+    @PostMapping("/dependencies/{name}/degraded")
+    public String dependencyDegraded(
+            @PathVariable String name) {
+
+        Dependency dependency =
+                dependencyRegistry.get(name);
+
+        if (dependency == null) {
+
+            return "Dependency not found: " + name;
+        }
+
+        dependency.setStatus(
+                DependencyStatus.DEGRADED
+        );
+
+        dependency.setMessage(
+                "Dependency response is degraded"
+        );
+
+        return "DEPENDENCY "
+                + name
+                + ": DEGRADED";
+    }
+
+
+    // =========================================================
+    // RECOVER DEPENDENCY
+    // =========================================================
+
+    @PostMapping("/dependencies/{name}/recover")
+    public String recoverDependency(
+            @PathVariable String name) {
+
+        Dependency dependency =
+                dependencyRegistry.get(name);
+
+        if (dependency == null) {
+
+            return "Dependency not found: " + name;
+        }
+
+        if (dependency.isAvailable()) {
+
+            return "DEPENDENCY "
+                    + name
+                    + ": ALREADY UP";
+        }
+
+        var result =
+                dependencyRecoveryService.recover(name);
+
+        if (result.isSuccessful()) {
+
+            return "DEPENDENCY "
+                    + name
+                    + ": RECOVERED"
+                    + " | attempts="
+                    + result.getAttempts()
+                    + " | duration="
+                    + result.getDuration()
+                    + "ms";
+        }
+
+        return "DEPENDENCY "
+                + name
+                + ": RECOVERY FAILED"
+                + " | attempts="
+                + result.getAttempts()
+                + " | duration="
+                + result.getDuration()
+                + "ms";
+    }
+
+
+    // =========================================================
     // GET COMPLETE RECOVERY HISTORY
     // =========================================================
 
@@ -266,6 +488,11 @@ public class SelfHealTestController {
 
         return "SELFHEAL RECOVERY HISTORY CLEARED";
     }
+
+
+    // =========================================================
+    // METRICS
+    // =========================================================
 
     @GetMapping("/metrics")
     public Map<String, Object> getMetrics() {

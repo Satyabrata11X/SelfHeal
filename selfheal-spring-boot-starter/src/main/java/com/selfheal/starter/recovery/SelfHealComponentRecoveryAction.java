@@ -2,6 +2,8 @@ package com.selfheal.starter.recovery;
 
 import com.selfheal.starter.core.HealthCheck;
 import com.selfheal.starter.core.SelfHealComponent;
+import com.selfheal.starter.dependency.Dependency;
+import com.selfheal.starter.dependency.DependencyHealthCheck;
 import com.selfheal.starter.failure.FailureType;
 
 public class SelfHealComponentRecoveryAction
@@ -17,12 +19,43 @@ public class SelfHealComponentRecoveryAction
             HealthCheck healthCheck,
             RecoveryContext context) {
 
-        // ------------------------------------------
-        // Validate Health Check Component
-        // ------------------------------------------
+        // =====================================================
+        // DEPENDENCY RECOVERY
+        // =====================================================
 
-        if (!(healthCheck
-                instanceof SelfHealComponent component)) {
+        if (healthCheck instanceof DependencyHealthCheck dependencyHealthCheck) {
+
+            Dependency dependency =
+                    dependencyHealthCheck.getDependency();
+
+            System.out.println(
+                    "[SELFHEAL] Recovering dependency: "
+                            + dependency.getName()
+                            + " | type="
+                            + dependency.getType()
+            );
+
+            dependency.setStatus(
+                    com.selfheal.starter.dependency.DependencyStatus.UP
+            );
+
+            dependency.setMessage(
+                    "Dependency recovered"
+            );
+
+            System.out.println(
+                    "[SELFHEAL] Dependency recovery action completed."
+            );
+
+            return dependency.isAvailable();
+        }
+
+
+        // =====================================================
+        // SELFHEAL COMPONENT RECOVERY
+        // =====================================================
+
+        if (!(healthCheck instanceof SelfHealComponent component)) {
 
             System.out.println(
                     "[SELFHEAL] No recovery action available for: "
@@ -32,21 +65,10 @@ public class SelfHealComponentRecoveryAction
             return false;
         }
 
-        // ------------------------------------------
-        // Simulate Recovery Failure
-        // ------------------------------------------
-        /*
-         * This is used only by the demo/testing environment.
-         *
-         * If recovery failures have been configured,
-         * this recovery attempt intentionally fails.
-         *
-         * This allows us to test:
-         *
-         * Attempt 1 → FAILED
-         * Attempt 2 → FAILED
-         * Attempt 3 → SUCCESS
-         */
+
+        // =====================================================
+        // SIMULATED RECOVERY FAILURE
+        // =====================================================
 
         if (component.consumeSimulatedRecoveryFailure()) {
 
@@ -57,9 +79,10 @@ public class SelfHealComponentRecoveryAction
             return false;
         }
 
-        // ------------------------------------------
-        // Get Failure Type
-        // ------------------------------------------
+
+        // =====================================================
+        // GET FAILURE TYPE
+        // =====================================================
 
         FailureType failureType =
                 context.getFailureType();
@@ -69,15 +92,12 @@ public class SelfHealComponentRecoveryAction
                         + failureType
         );
 
-        // ------------------------------------------
-        // Failure-Specific Recovery
-        // ------------------------------------------
+
+        // =====================================================
+        // FAILURE-SPECIFIC COMPONENT RECOVERY
+        // =====================================================
 
         switch (failureType) {
-
-            // --------------------------------------
-            // Component Failure
-            // --------------------------------------
 
             case COMPONENT_FAILURE -> {
 
@@ -90,10 +110,6 @@ public class SelfHealComponentRecoveryAction
                 return component.isHealthy();
             }
 
-            // --------------------------------------
-            // High Latency
-            // --------------------------------------
-
             case HIGH_LATENCY -> {
 
                 System.out.println(
@@ -104,10 +120,6 @@ public class SelfHealComponentRecoveryAction
 
                 return true;
             }
-
-            // --------------------------------------
-            // Timeout
-            // --------------------------------------
 
             case TIMEOUT -> {
 
@@ -120,10 +132,6 @@ public class SelfHealComponentRecoveryAction
                 return true;
             }
 
-            // --------------------------------------
-            // Connection Error
-            // --------------------------------------
-
             case CONNECTION_ERROR -> {
 
                 System.out.println(
@@ -134,10 +142,6 @@ public class SelfHealComponentRecoveryAction
 
                 return true;
             }
-
-            // --------------------------------------
-            // Database Failure
-            // --------------------------------------
 
             case DATABASE_FAILURE -> {
 
@@ -150,10 +154,6 @@ public class SelfHealComponentRecoveryAction
                 return true;
             }
 
-            // --------------------------------------
-            // Unknown Failure
-            // --------------------------------------
-
             case UNKNOWN -> {
 
                 System.out.println(
@@ -163,10 +163,6 @@ public class SelfHealComponentRecoveryAction
 
                 return false;
             }
-
-            // --------------------------------------
-            // Safety Fallback
-            // --------------------------------------
 
             default -> {
 

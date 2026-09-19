@@ -30,3 +30,9 @@ management:
   persistence:
     enabled: true
     provider: memory
+
+  circuit-breaker:
+    enabled: true
+    failure-threshold: 3
+    open-duration: 10000
+    half-open-max-calls: 1
