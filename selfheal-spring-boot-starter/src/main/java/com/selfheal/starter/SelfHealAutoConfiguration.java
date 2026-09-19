@@ -9,7 +9,6 @@ import com.selfheal.starter.failure.FailureClassifier;
 import com.selfheal.starter.history.RecoveryHistory;
 import com.selfheal.starter.incident.FailureContextFactory;
 import com.selfheal.starter.incident.FailureContextService;
-import com.selfheal.starter.incident.FailureIncidentRecorder;
 import com.selfheal.starter.incident.InMemoryFailureIncidentRecorder;
 import com.selfheal.starter.incident.SelfHealExceptionInterceptor;
 import com.selfheal.starter.incident.SelfHealIncidentController;
@@ -20,6 +19,9 @@ import com.selfheal.starter.management.SelfHealManagementService;
 import com.selfheal.starter.metrics.SelfHealMetrics;
 import com.selfheal.starter.metrics.SelfHealMetricsBinder;
 import com.selfheal.starter.monitoring.SelfHealMonitor;
+import com.selfheal.starter.persistence.FailureIncidentPersistence;
+import com.selfheal.starter.persistence.SelfHealPersistenceManager;
+import com.selfheal.starter.persistence.SelfHealPersistenceProperties;
 import com.selfheal.starter.recovery.RecoveryAction;
 import com.selfheal.starter.recovery.RecoveryCooldown;
 import com.selfheal.starter.recovery.RecoveryPolicy;
@@ -30,15 +32,20 @@ import com.selfheal.starter.recovery.SelfHealRecoveryEngine;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.env.Environment;
 
 
 @AutoConfiguration
-@EnableConfigurationProperties(SelfHealProperties.class)
+@EnableConfigurationProperties({
+        SelfHealProperties.class,
+        SelfHealPersistenceProperties.class
+})
 public class SelfHealAutoConfiguration {
 
     // =========================================================
@@ -394,15 +401,16 @@ public class SelfHealAutoConfiguration {
     // =========================================================
     // EXCEPTION INTERCEPTION
     // =========================================================
+
     @Bean
     public SelfHealExceptionInterceptor selfHealExceptionInterceptor(
             FailureContextService contextService,
-            FailureIncidentRecorder incidentRecorder,
+            SelfHealPersistenceManager persistenceManager,
             Environment environment) {
 
         return new SelfHealExceptionInterceptor(
                 contextService,
-                incidentRecorder,
+                persistenceManager,
                 environment
         );
     }
@@ -428,10 +436,43 @@ public class SelfHealAutoConfiguration {
 
     @Bean
     public SelfHealIncidentController selfHealIncidentController(
-            InMemoryFailureIncidentRecorder recorder) {
+            @Qualifier("selfHealPersistenceManager")
+            FailureIncidentPersistence persistence) {
 
         return new SelfHealIncidentController(
-                recorder
+                persistence
+        );
+    }
+
+
+    // =========================================================
+    // PERSISTENCE MANAGER
+    // =========================================================
+
+    @Bean
+    @Primary
+    public SelfHealPersistenceManager selfHealPersistenceManager(
+            InMemoryFailureIncidentRecorder recorder,
+            SelfHealPersistenceProperties properties) {
+
+        String providerName = properties.getProvider();
+
+        if (!"memory".equalsIgnoreCase(providerName)) {
+            throw new IllegalStateException(
+                    "Persistence provider '" + providerName
+                            + "' is not available yet. "
+                            + "Currently supported: memory"
+            );
+        }
+
+        System.out.println(
+                "[SELFHEAL-PERSISTENCE] Active provider: "
+                        + providerName
+        );
+
+        return new SelfHealPersistenceManager(
+                recorder,
+                providerName
         );
     }
 

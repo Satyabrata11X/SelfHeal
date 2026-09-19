@@ -1,11 +1,14 @@
 package com.selfheal.starter.incident;
 
+import com.selfheal.starter.persistence.FailureIncidentPersistence;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class InMemoryFailureIncidentRecorder
-        implements FailureIncidentRecorder {
+        implements FailureIncidentRecorder,
+        FailureIncidentPersistence {
 
     private final List<FailureContext> incidents =
             Collections.synchronizedList(
@@ -158,5 +161,20 @@ public class InMemoryFailureIncidentRecorder
         synchronized (incidents) {
             incidents.clear();
         }
+    }
+
+    @Override
+    public void save(FailureContext context) {
+        record(context);
+    }
+
+    @Override
+    public List<FailureContext> findAll() {
+        return getIncidents();
+    }
+
+    @Override
+    public void deleteAll() {
+        clear();
     }
 }
