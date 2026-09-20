@@ -139,13 +139,13 @@ The runtime development environment used during testing may use a newer installe
 
   -> Add the following dependency to your Spring Boot application's pom.xml:
   
-                                ```
-                                <dependency>
-                                    <groupId>com.selfheal</groupId>
-                                    <artifactId>selfheal-spring-boot-starter</artifactId>
-                                    <version>0.1.0</version>
-                                </dependency>
-                                ```
+  ```
+                              <dependency>
+                              <groupId>io.github.satyabrata11x</groupId>
+                              <artifactId>selfheal-spring-boot-starter</artifactId>
+                              <version>0.1.1</version>
+                              </dependency>
+```
 
 ### The Maven coordinates are:
 
