@@ -8,7 +8,10 @@
 
 	<modelVersion>4.0.0</modelVersion>
 
-	<!-- Spring Boot parent -->
+	<!-- ========================================================= -->
+	<!-- Spring Boot Parent                                       -->
+	<!-- ========================================================= -->
+
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
@@ -16,42 +19,116 @@
 		<relativePath/>
 	</parent>
 
-	<!-- SelfHeal identity -->
-	<groupId>com.selfheal</groupId>
+
+	<!-- ========================================================= -->
+	<!-- Project Coordinates                                      -->
+	<!-- ========================================================= -->
+
+	<groupId>io.github.satyabrata11x</groupId>
 	<artifactId>selfheal-spring-boot-starter</artifactId>
-	<version>0.1.0</version>
+	<version>0.1.1</version>
+	<packaging>jar</packaging>
+
+
+	<!-- ========================================================= -->
+	<!-- Project Information                                      -->
+	<!-- ========================================================= -->
 
 	<name>SelfHeal Spring Boot Starter</name>
 
 	<description>
-		AI-assisted runtime error detection for Spring Boot applications
+		Runtime health monitoring, failure detection, automated recovery,
+		circuit breaking, failure fingerprinting, alerts, event listeners,
+		recovery audit trails, dependency health graphs, and management APIs
+		for Spring Boot applications.
 	</description>
 
-	<!-- Java -->
+	<url>https://github.com/Satyabrata11X/SelfHeal</url>
+
+
+	<!-- ========================================================= -->
+	<!-- License                                                   -->
+	<!-- ========================================================= -->
+
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+
+	<!-- ========================================================= -->
+	<!-- Developer                                                 -->
+	<!-- ========================================================= -->
+
+	<developers>
+		<developer>
+			<id>satyabrata11x</id>
+			<name>Satyabrata Behera</name>
+			<organization>Satyabrata11x</organization>
+			<organizationUrl>https://github.com/Satyabrata11X</organizationUrl>
+		</developer>
+	</developers>
+
+
+	<!-- ========================================================= -->
+	<!-- Source Control                                            -->
+	<!-- ========================================================= -->
+
+	<scm>
+		<connection>
+			scm:git:git://github.com/Satyabrata11X/SelfHeal.git
+		</connection>
+
+		<developerConnection>
+			scm:git:ssh://git@github.com/Satyabrata11X/SelfHeal.git
+		</developerConnection>
+
+		<url>
+			https://github.com/Satyabrata11X/SelfHeal
+		</url>
+	</scm>
+
+
+	<!-- ========================================================= -->
+	<!-- Properties                                                -->
+	<!-- ========================================================= -->
+
 	<properties>
 		<java.version>21</java.version>
+		<maven.compiler.release>21</maven.compiler.release>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
 
-	<!-- Dependencies -->
+
+	<!-- ========================================================= -->
+	<!-- Dependencies                                              -->
+	<!-- ========================================================= -->
+
 	<dependencies>
 
-		<!-- Required for @AutoConfiguration -->
+		<!-- Spring Boot Auto Configuration -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-autoconfigure</artifactId>
 		</dependency>
 
-		<!-- Required for Spring HTTP functionality -->
+		<!-- Spring Web -->
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-web</artifactId>
 		</dependency>
 
+		<!-- Spring Web MVC -->
 		<dependency>
 			<groupId>org.springframework</groupId>
 			<artifactId>spring-webmvc</artifactId>
 		</dependency>
 
+		<!-- Jakarta Servlet API -->
 		<dependency>
 			<groupId>jakarta.servlet</groupId>
 			<artifactId>jakarta.servlet-api</artifactId>
@@ -69,29 +146,112 @@
 			<artifactId>spring-boot-health</artifactId>
 		</dependency>
 
-		<!-- Micrometer Core -->
+		<!-- Micrometer -->
 		<dependency>
 			<groupId>io.micrometer</groupId>
 			<artifactId>micrometer-core</artifactId>
 		</dependency>
 
-		<!-- Actuator auto-configuration support -->
+		<!-- Actuator Auto Configuration -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-actuator-autoconfigure</artifactId>
 		</dependency>
 
+		<!-- Thymeleaf for SelfHeal Dashboard -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-thymeleaf</artifactId>
+		</dependency>
+
+		<!-- Testing -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-thymeleaf</artifactId>
-		</dependency>
-
 	</dependencies>
+
+
+	<!-- ========================================================= -->
+	<!-- Build Plugins                                             -->
+	<!-- ========================================================= -->
+
+	<build>
+
+		<plugins>
+
+			<!-- Source JAR -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar-no-fork</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+
+			<!-- Javadoc JAR -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-javadoc-plugin</artifactId>
+
+				<configuration>
+					<doclint>none</doclint>
+				</configuration>
+
+				<executions>
+					<execution>
+						<id>attach-javadocs</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+
+			<!-- GPG Signing -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-gpg-plugin</artifactId>
+				<version>3.2.8</version>
+
+				<executions>
+					<execution>
+						<id>sign-artifacts</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>sign</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+
+
+			<!-- Sonatype Central Publishing -->
+			<plugin>
+				<groupId>org.sonatype.central</groupId>
+				<artifactId>central-publishing-maven-plugin</artifactId>
+				<version>0.9.0</version>
+
+				<extensions>true</extensions>
+
+				<configuration>
+					<publishingServerId>central</publishingServerId>
+					<autoPublish>true</autoPublish>
+				</configuration>
+			</plugin>
+
+		</plugins>
+
+	</build>
 
 </project>

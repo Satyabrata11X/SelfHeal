@@ -8,7 +8,10 @@
 
 	<modelVersion>4.0.0</modelVersion>
 
-	<!-- Spring Boot -->
+	<!-- ========================================================= -->
+	<!-- Spring Boot Parent                                       -->
+	<!-- ========================================================= -->
+
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
@@ -16,7 +19,11 @@
 		<relativePath/>
 	</parent>
 
-	<!-- Demo Application Identity -->
+
+	<!-- ========================================================= -->
+	<!-- Demo Application Identity                                -->
+	<!-- ========================================================= -->
+
 	<groupId>com.selfheal</groupId>
 	<artifactId>selfheal-demo-app</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
@@ -27,12 +34,20 @@
 		Demo application used to test the SelfHeal Spring Boot Starter
 	</description>
 
-	<!-- Java -->
+
+	<!-- ========================================================= -->
+	<!-- Java                                                      -->
+	<!-- ========================================================= -->
+
 	<properties>
 		<java.version>21</java.version>
 	</properties>
 
-	<!-- Dependencies -->
+
+	<!-- ========================================================= -->
+	<!-- Dependencies                                              -->
+	<!-- ========================================================= -->
+
 	<dependencies>
 
 		<!-- Spring MVC / Web -->
@@ -41,18 +56,25 @@
 			<artifactId>spring-boot-starter-webmvc</artifactId>
 		</dependency>
 
+
 		<!-- Spring Boot Actuator -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
-		<!-- SelfHeal Starter -->
+
+		<!-- ===================================================== -->
+		<!-- SelfHeal Spring Boot Starter                          -->
+		<!-- Published on Maven Central                            -->
+		<!-- ===================================================== -->
+
 		<dependency>
-			<groupId>com.selfheal</groupId>
+			<groupId>io.github.satyabrata11x</groupId>
 			<artifactId>selfheal-spring-boot-starter</artifactId>
-			<version>0.1.0</version>
+			<version>0.1.1</version>
 		</dependency>
+
 
 		<!-- Testing -->
 		<dependency>
@@ -63,8 +85,13 @@
 
 	</dependencies>
 
-	<!-- Build -->
+
+	<!-- ========================================================= -->
+	<!-- Build                                                     -->
+	<!-- ========================================================= -->
+
 	<build>
+
 		<plugins>
 
 			<!-- Spring Boot Maven Plugin -->
@@ -74,6 +101,7 @@
 			</plugin>
 
 		</plugins>
+
 	</build>
 
 </project>
