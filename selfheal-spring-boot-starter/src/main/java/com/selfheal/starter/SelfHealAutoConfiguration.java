@@ -8,9 +8,7 @@ import com.selfheal.starter.audit.InMemoryRecoveryAuditTrail;
 import com.selfheal.starter.audit.RecoveryAuditTrail;
 import com.selfheal.starter.config.SelfHealProperties;
 import com.selfheal.starter.core.SelfHealComponent;
-import com.selfheal.starter.dependency.DependencyFailureDetector;
-import com.selfheal.starter.dependency.DependencyRecoveryService;
-import com.selfheal.starter.dependency.DependencyRegistry;
+import com.selfheal.starter.dependency.*;
 import com.selfheal.starter.event.SelfHealEventPublisher;
 import com.selfheal.starter.failure.FailureClassifier;
 import com.selfheal.starter.fingerprint.FailureFingerprintGenerator;
@@ -22,6 +20,7 @@ import com.selfheal.starter.incident.SelfHealExceptionInterceptor;
 import com.selfheal.starter.incident.SelfHealIncidentController;
 import com.selfheal.starter.incident.SelfHealWebMvcConfiguration;
 import com.selfheal.starter.incident.StackTraceLocationExtractor;
+import com.selfheal.starter.management.SelfHealDashboardController;
 import com.selfheal.starter.management.SelfHealManagementController;
 import com.selfheal.starter.management.SelfHealManagementService;
 import com.selfheal.starter.metrics.SelfHealMetrics;
@@ -328,30 +327,32 @@ public class SelfHealAutoConfiguration {
 // MANAGEMENT CONTROLLER
 // =========================================================
 
-@Bean
-public SelfHealManagementController selfHealManagementController(
-        SelfHealComponent component,
-        SelfHealMonitor monitor,
-        SelfHealMetrics metrics,
-        RecoveryHistory recoveryHistory,
-        CircuitBreakerManager circuitBreakerManager,
-        DependencyRegistry dependencyRegistry,
-        DependencyFailureDetector dependencyFailureDetector,
-        RecoveryEscalationHandler escalationHandler,
-        RecoveryAuditTrail recoveryAuditTrail) {
+    @Bean
+    public SelfHealManagementController selfHealManagementController(
+            SelfHealComponent component,
+            SelfHealMonitor monitor,
+            SelfHealMetrics metrics,
+            RecoveryHistory recoveryHistory,
+            CircuitBreakerManager circuitBreakerManager,
+            DependencyRegistry dependencyRegistry,
+            DependencyFailureDetector dependencyFailureDetector,
+            RecoveryEscalationHandler escalationHandler,
+            RecoveryAuditTrail recoveryAuditTrail,
+            DependencyGraphService dependencyGraphService) {
 
-    return new SelfHealManagementController(
-            component,
-            monitor,
-            metrics,
-            recoveryHistory,
-            circuitBreakerManager,
-            dependencyRegistry,
-            dependencyFailureDetector,
-            escalationHandler,
-            recoveryAuditTrail
-    );
-}
+        return new SelfHealManagementController(
+                component,
+                monitor,
+                metrics,
+                recoveryHistory,
+                circuitBreakerManager,
+                dependencyRegistry,
+                dependencyFailureDetector,
+                escalationHandler,
+                recoveryAuditTrail,
+                dependencyGraphService
+        );
+    }
 
     // =========================================================
     // ACTUATOR HEALTH INDICATOR
@@ -628,6 +629,49 @@ public SelfHealManagementController selfHealManagementController(
     @Bean
     public RecoveryAuditTrail recoveryAuditTrail() {
         return new InMemoryRecoveryAuditTrail();
+    }
+
+    @Bean
+    public DependencyGraph dependencyGraph() {
+        return new DependencyGraph();
+    }
+
+    @Bean
+    public DependencyGraphService dependencyGraphService(
+            DependencyRegistry dependencyRegistry,
+            DependencyGraph dependencyGraph) {
+
+        return new DependencyGraphService(
+                dependencyRegistry,
+                dependencyGraph
+        );
+    }
+
+    @Bean
+    public DependencyGraphRegistrationService dependencyGraphRegistrationService(
+            DependencyRegistry dependencyRegistry,
+            DependencyGraphService dependencyGraphService) {
+
+        return new DependencyGraphRegistrationService(
+                dependencyRegistry,
+                dependencyGraphService
+        );
+    }
+
+    // =========================================================
+// SELFHEAL DASHBOARD
+// =========================================================
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "selfheal",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    public SelfHealDashboardController selfHealDashboardController() {
+
+        return new SelfHealDashboardController();
     }
 
     // =========================================================

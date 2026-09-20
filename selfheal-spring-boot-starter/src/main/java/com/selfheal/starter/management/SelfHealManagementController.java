@@ -6,7 +6,9 @@ import com.selfheal.starter.core.HealthCheckResult;
 import com.selfheal.starter.core.SelfHealComponent;
 import com.selfheal.starter.dependency.Dependency;
 import com.selfheal.starter.dependency.DependencyFailureDetector;
+import com.selfheal.starter.dependency.DependencyGraphService;
 import com.selfheal.starter.dependency.DependencyRegistry;
+import com.selfheal.starter.dependency.DependencyStatus;
 import com.selfheal.starter.history.RecoveryHistory;
 import com.selfheal.starter.history.RecoveryRecord;
 import com.selfheal.starter.metrics.SelfHealMetrics;
@@ -54,6 +56,8 @@ public class SelfHealManagementController {
 
     private final RecoveryAuditTrail recoveryAuditTrail;
 
+    private final DependencyGraphService dependencyGraphService;
+
 
     // =========================================================
     // CONSTRUCTOR
@@ -68,7 +72,8 @@ public class SelfHealManagementController {
             DependencyRegistry dependencyRegistry,
             DependencyFailureDetector dependencyFailureDetector,
             RecoveryEscalationHandler escalationHandler,
-            RecoveryAuditTrail recoveryAuditTrail) {
+            RecoveryAuditTrail recoveryAuditTrail,
+            DependencyGraphService dependencyGraphService) {
 
         this.component = component;
         this.monitor = monitor;
@@ -79,6 +84,7 @@ public class SelfHealManagementController {
         this.dependencyFailureDetector = dependencyFailureDetector;
         this.escalationHandler = escalationHandler;
         this.recoveryAuditTrail = recoveryAuditTrail;
+        this.dependencyGraphService = dependencyGraphService;
     }
 
 
@@ -119,7 +125,6 @@ public class SelfHealManagementController {
 
         Map<String, Object> result =
                 new LinkedHashMap<>();
-
 
         // -----------------------------------------------------
         // HEALTH CHECK METRICS
@@ -209,7 +214,6 @@ public class SelfHealManagementController {
                 "lastRecoveryDuration",
                 metrics.getLastRecoveryDuration()
         );
-
 
         return result;
     }
@@ -443,6 +447,144 @@ public class SelfHealManagementController {
 
         return dependencyFailureDetector
                 .getHealthyDependencies();
+    }
+
+
+    // =========================================================
+    // SET DEPENDENCY DOWN
+    // =========================================================
+
+    @PostMapping("/dependencies/{dependencyName}/down")
+    public Map<String, Object> markDependencyDown(
+            @PathVariable String dependencyName) {
+
+        Dependency dependency =
+                dependencyRegistry.get(dependencyName);
+
+        if (dependency == null) {
+
+            return Map.of(
+                    "success",
+                    false,
+                    "message",
+                    "Dependency not found: "
+                            + dependencyName
+            );
+        }
+
+        dependency.setStatus(
+                DependencyStatus.DOWN
+        );
+
+        dependency.setMessage(
+                "Dependency manually marked as DOWN"
+        );
+
+        Map<String, Object> result =
+                new LinkedHashMap<>();
+
+        result.put(
+                "success",
+                true
+        );
+
+        result.put(
+                "dependency",
+                dependencyName
+        );
+
+        result.put(
+                "status",
+                dependency.getStatus()
+        );
+
+        result.put(
+                "message",
+                dependency.getMessage()
+        );
+
+        return result;
+    }
+
+
+    // =========================================================
+    // SET DEPENDENCY UP
+    // =========================================================
+
+    @PostMapping("/dependencies/{dependencyName}/up")
+    public Map<String, Object> markDependencyUp(
+            @PathVariable String dependencyName) {
+
+        Dependency dependency =
+                dependencyRegistry.get(dependencyName);
+
+        if (dependency == null) {
+
+            return Map.of(
+                    "success",
+                    false,
+                    "message",
+                    "Dependency not found: "
+                            + dependencyName
+            );
+        }
+
+        dependency.setStatus(
+                DependencyStatus.UP
+        );
+
+        dependency.setMessage(
+                "Dependency manually marked as UP"
+        );
+
+        Map<String, Object> result =
+                new LinkedHashMap<>();
+
+        result.put(
+                "success",
+                true
+        );
+
+        result.put(
+                "dependency",
+                dependencyName
+        );
+
+        result.put(
+                "status",
+                dependency.getStatus()
+        );
+
+        result.put(
+                "message",
+                dependency.getMessage()
+        );
+
+        return result;
+    }
+
+
+    // =========================================================
+    // HEALTH DEPENDENCY GRAPH
+    // =========================================================
+
+    @GetMapping("/dependency-graph")
+    public DependencyGraphResponse dependencyGraph() {
+
+        return dependencyGraphService.getHealthGraph();
+    }
+
+
+    // =========================================================
+    // DEPENDENCIES OF A COMPONENT
+    // =========================================================
+
+    @GetMapping("/dependency-graph/{componentName}")
+    public List<?> dependenciesOfComponent(
+            @PathVariable String componentName) {
+
+        return dependencyGraphService
+                .getDependenciesOf(componentName);
     }
 
 

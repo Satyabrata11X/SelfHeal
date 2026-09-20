@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#070b12">
+    <title>SelfHeal • Management Dashboard</title>
+    <link rel="stylesheet" href="/selfheal/css/selfheal.css">
+</head>
+
+<body>
+<div class="app">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="logo">
+                <svg viewBox="0 0 48 48" aria-label="SelfHeal logo" role="img">
+                    <path
+                            d="M24 4
+               C13 4 7 10 7 20
+               C7 29 13 34 19 37
+               C21 38 22 40 24 44
+               C26 40 27 38 29 37
+               C35 34 41 29 41 20
+               C41 10 35 4 24 4Z"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            stroke-linejoin="round"/>
+                    <path
+                            d="M17 24
+               L21 28
+               L31 18"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="3"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div><b>SelfHeal</b><small>Spring Boot Recovery</small></div>
+        </div>
+        <nav>
+            <a class="active" href="#overview">⌂ <span>Overview</span></a>
+            <a href="#dependencies-section">◈ <span>Dependencies</span></a>
+            <a href="#graph-section">⌁ <span>Topology</span></a>
+            <a href="#recovery-section">↻ <span>Recovery</span></a>
+            <a href="#audit-section">▤ <span>Audit Trail</span></a>
+        </nav>
+        <div class="sidebar-bottom">
+            <div class="mini"><i id="sidebarStatusDot" class="dot offline"></i>
+                <div><b id="sidebarStatusText">Disconnected</b><small>Management API</small></div>
+            </div>
+            <div class="creator">Created by <strong>Satya</strong></div>
+        </div>
+    </aside>
+
+    <main>
+        <header class="topbar">
+            <div><label>SELF-HEAL MANAGEMENT</label>
+                <h1>System Overview</h1>
+                <p>Live health, dependency topology and automated recovery telemetry.</p>
+            </div>
+            <div class="actions"><span class="live"><i id="connectionIndicator" class="dot offline"></i><span
+                    id="connectionText">Disconnected</span></span><button onclick="loadDashboard(true)">↻ Refresh</button>
+            </div>
+        </header>
+
+        <section id="overview" class="hero">
+            <div class="hero-card">
+                <div class="row"><label>SYSTEM HEALTH</label><span id="healthPill" class="pill unknown">UNKNOWN</span></div>
+                <h2 id="componentName">Loading...</h2>
+                <p id="healthMessage">Waiting for the SelfHeal management API.</p>
+                <div class="hero-meta">
+                    <div><small>Recovery state</small><b id="recoveryState">-</b></div>
+                    <div><small>Cooldown</small><b id="cooldownState">-</b></div>
+                    <div><small>Last response</small><b id="lastResponseTimeHero">0 ms</b></div>
+                </div>
+            </div>
+            <div class="orb-card"><label>SELF-HEAL STATUS</label>
+                <div id="healthOrb" class="orb unknown"><b id="healthOrbText">?</b></div><small id="healthOrbCaption">Waiting
+                    for data</small>
+            </div>
+        </section>
+
+        <section class="block">
+            <div class="heading">
+                <div><label>TELEMETRY</label>
+                    <h2>Live Metrics</h2>
+                </div><small>Auto refresh · 5s</small>
+            </div>
+            <div class="metrics">
+                <article><i class="blue">⌁</i>
+                    <div><small>Health Checks</small><b id="totalHealthChecks">0</b></div>
+                </article>
+                <article><i class="red">!</i>
+                    <div><small>Failed Checks</small><b id="failedHealthChecks">0</b></div>
+                </article>
+                <article><i class="amber">⚠</i>
+                    <div><small>Failures Detected</small><b id="totalFailures">0</b></div>
+                </article>
+                <article><i class="violet">↻</i>
+                    <div><small>Recovery Processes</small><b id="totalRecoveryProcesses">0</b></div>
+                </article>
+                <article><i class="green">✓</i>
+                    <div><small>Successful Recoveries</small><b id="successfulRecoveries">0</b></div>
+                </article>
+                <article><i class="red">×</i>
+                    <div><small>Failed Recoveries</small><b id="failedRecoveries">0</b></div>
+                </article>
+                <article><i class="cyan">%</i>
+                    <div><small>Recovery Success</small><b id="recoverySuccessRate">0%</b></div>
+                </article>
+                <article><i class="orange">◷</i>
+                    <div><small>Response Time</small><b id="lastResponseTime">0 ms</b></div>
+                </article>
+            </div>
+        </section>
+
+        <section id="dependencies-section" class="block">
+            <div class="heading">
+                <div><label>INFRASTRUCTURE</label>
+                    <h2>Dependencies</h2>
+                </div><button class="small" onclick="loadDependencies()">Refresh</button>
+            </div>
+            <div id="dependencySummary" class="summary"></div>
+            <div id="dependencies" class="deps">
+                <div class="loading">Loading dependencies...</div>
+            </div>
+        </section>
+
+        <section id="graph-section" class="block">
+            <div class="heading">
+                <div><label>TOPOLOGY</label>
+                    <h2>Health Dependency Graph</h2>
+                </div>
+                <div class="graph-actions"><small id="graphUpdated">Waiting for graph</small><button class="small"
+                                                                                                     onclick="loadDependencyGraph()">Refresh</button></div>
+            </div>
+            <div class="graph-panel">
+                <div class="graph-bar">
+                    <div>● UP &nbsp; <em>● DEGRADED</em> &nbsp; <strong>● DOWN</strong> &nbsp; <span>● UNKNOWN</span></div>
+                    <div>Nodes <b id="graphNodeCount">0</b> · Links <b id="graphEdgeCount">0</b></div>
+                </div>
+                <div id="dependencyGraph" class="graph">
+                    <div class="loading">Loading dependency graph...</div>
+                </div>
+                <div id="graphDetails" class="details hidden"></div>
+            </div>
+        </section>
+
+        <section id="recovery-section" class="split block">
+            <div class="panel">
+                <div class="heading compact">
+                    <div><label>PROTECTION</label>
+                        <h2>Circuit Breakers</h2>
+                    </div><button class="icon" onclick="loadCircuitBreakers()">↻</button>
+                </div>
+                <div id="circuitBreakers" class="stack">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="heading compact">
+                    <div><label>ESCALATION</label>
+                        <h2>Recovery Escalations</h2>
+                    </div><button class="icon" onclick="loadEscalations()">↻</button>
+                </div>
+                <div id="escalations" class="stack">
+                    <div class="loading">Loading...</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="audit-section" class="block">
+            <div class="heading">
+                <div><label>HISTORY</label>
+                    <h2>Recovery Audit Trail</h2>
+                </div><button class="small" onclick="loadAudit()">Refresh</button>
+            </div>
+            <div class="audit">
+                <div class="audit-head">
+                    <span>EVENT</span><span>STRATEGY</span><span>ATTEMPTS</span><span>DURATION</span><span>RESULT</span></div>
+                <div id="audit">
+                    <div class="loading">Loading audit trail...</div>
+                </div>
+            </div>
+        </section>
+
+        <footer>SelfHeal Management Dashboard <span>Built with Spring Boot · <strong>Created by Satya</strong></span>
+        </footer>
+    </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/selfheal/js/selfheal.js"></script>
+</body>
+
+</html>
