@@ -14,6 +14,12 @@ The goal is simple:
 
 ---
 
+## Documentation
+
+Complete project documentation:
+
+**[View SelfHeal Documentation](https://satyabrata11x.github.io/SelfHeal-Documentation/)**
+
 ## ✨ Features
 
 SelfHeal currently provides:
